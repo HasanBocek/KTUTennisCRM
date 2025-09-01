@@ -1,0 +1,58 @@
+//Core files
+@import "./node_modules/bootstrap/scss/functions";
+@import "./node_modules/bootstrap/scss/variables";
+
+@import "config/variables";
+@import "config/variables-dark";
+
+@import "./node_modules/bootstrap/scss/mixins";
+// @import "./node_modules/bootstrap/scss/bootstrap";
+
+@import "components/alerts";
+@import "components/breadcrumb";
+@import "components/buttons";
+@import "components/cards";
+@import "components/dropdowns";
+@import "components/forms";
+@import "components/modals";
+@import "components/pages";
+@import "components/progress";
+@import "components/root";
+@import "components/spinner";
+@import "components/tables";
+@import "components/tab-tooltip";
+@import "components/utilities";
+
+@import "structure/startbar";
+@import "structure/topbar";
+@import "structure/footer";
+
+@import "plugins/sweet-alert";
+
+// Mobile status bar background fix
+body {
+    background-color: var(--bs-body-bg);
+}
+
+html {
+    background-color: var(--bs-body-bg);
+}
+
+// Mobile sidebar scroll behavior
+@media (max-width: 1024px) {
+    body.startbar-enable {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100vh;
+    }
+    
+    // Sidebar scroll olaylarını yakalayıp kendi scroll'una yönlendir
+    body.startbar-enable .startbar {
+        .startbar-collapse {
+            // Touch scroll events for better mobile experience
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+    }
+}
