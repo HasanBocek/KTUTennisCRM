@@ -27,7 +27,7 @@
       <CardBody class="pt-0">
         <div class="ex-page-content text-center">
           <img src={error} alt="0" class="" height="170" />
-          <h5 class="fs-16 text-muted mb-3">Bir şeyler ters gitti</h5>
+          <h5 class="fs-16 fw-normal text-muted mb-3">Bir şeyler ters gitti</h5>
         </div>
         <div class="d-flex flex-column gap-2 mt-3">
           <a class="btn btn-primary w-100" href="/dashboard/profile"
