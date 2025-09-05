@@ -1,5 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import { page } from '$app/stores';
+    import ToastNotification from '$lib/components/ToastNotification.svelte';
 
     const favicon = '/images/favicon.ico';
 
@@ -80,4 +82,5 @@
     }
 </script>
 
-<slot/>
+<slot />
+<ToastNotification />

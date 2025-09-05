@@ -85,11 +85,18 @@
           <CardTitle>Kişisel Bilgiler</CardTitle>
         </div>
         <div class="col-auto">
-          <div class="mt-2 d-flex justify-content-center gap-2">
+          <div class="mt-2 d-flex justify-content-center flex-wrap gap-2">
             {#if sortedRoles.length > 0}
               {#each sortedRoles as role}
                 <RoleBadge roleId={role.id} />
               {/each}
+              {#if sortedRoles.length > 3}
+                <span 
+                  class="badge bg-secondary" 
+                  title={sortedRoles.slice(3).map(role => role.name).join(', ')}
+                >
+                </span>
+              {/if}
             {/if}
           </div>
         </div>
@@ -241,3 +248,10 @@
     {/each}
   </Row>
 </Col>
+
+<style>
+  .flex-wrap {
+    max-width: 100%;
+    justify-content: center;
+  }
+</style>

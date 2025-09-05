@@ -1,12 +1,9 @@
 <script lang="ts">
   import { Card, CardBody, CardHeader, CardTitle, Col, Row } from "@sveltestrap/sveltestrap";
-  import { meStore } from "$lib/stores/userStore";
   import type { MeType } from "$lib/types/types";
   import { SessionData } from "$lib/assets/data/mock/data";
-  import { onDestroy } from "svelte";
-  let user: MeType;
-  const unsubscribe = meStore.subscribe((u) => (user = u));
-  onDestroy(() => unsubscribe());
+
+  export let user: MeType;
 
   let attendedCount = 0;
   $: attendedCount = user
@@ -59,7 +56,7 @@
                 {user.firstName}
                 {user.lastName}
               </h5>
-              <p class="mb-0 text-muted fw-medium">Demo Kullanıcı</p>
+
             </div>
           </div>
         </Col>
