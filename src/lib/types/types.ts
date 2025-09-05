@@ -172,3 +172,43 @@ type APIErrorResponse<T> = {
   message: string;
   code: number;
 };
+
+export interface LoginCredentials {
+  identifier: string;
+  password: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  message: string;
+  errors?: string[];
+  tokens?: {
+    access: {
+      token: string;
+      expires: string;
+    };
+    refresh: {
+      token: string;
+      expires: string;
+    };
+  };
+}
+
+export interface RegisterCredentials {
+  firstName: string;
+  lastName: string;
+  studentNumber: string;
+  department: string;
+  grade: string;
+  isMale: string;
+  phoneNumber: string;
+  skillLevel: string;
+  password: string;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  errors?: string[];
+  userId?: string;
+}
