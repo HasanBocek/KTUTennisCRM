@@ -12,13 +12,10 @@
   import RoleBadge from "$lib/components/RoleBadge.svelte";
   import type { MeType } from "$lib/types/types";
   import { getRoleById } from "$lib/types/role";
-  import { meStore } from "$lib/stores/userStore";
   import type { RoleType } from "$lib/types/role";
-  let user: MeType;
-  import { onDestroy } from "svelte";
-  const unsubscribe = meStore.subscribe((u) => (user = u));
-  onDestroy(() => unsubscribe());
-
+  export let user: MeType;
+  import departments from "$lib/assets/departments.json";
+  
   // Rolleri seviyeye göre sırala (yüksekten düşüğe)
   $: sortedRoles = user?.roles
     ? user.roles
@@ -31,6 +28,11 @@
     : ([] as RoleType[]);
 
   $: memberships = user.memberships || [];
+
+  // Safe department name lookup
+  $: departmentName = user.department 
+    ? departments[user.department as keyof typeof departments] || "Veri Yok"
+    : "Veri Yok";
 
   function getStatusMeta(status: string): {
     label: string;
@@ -137,7 +139,7 @@
           <i
             class="las la-graduation-cap me-2 text-secondary fs-22 align-middle"
           ></i>
-          <b> Bölüm</b>: {user.department || "Veri Yok"}
+          <b> Bölüm</b>: {departmentName}
         </li>
         <li class="mt-2">
           <i
@@ -190,7 +192,7 @@
   <Row>
     {#each memberships as membership}
       <Col lg="12">
-        <Card class="shadow-sm border-0">
+        <Card class="border-0">
           <CardHeader class="bg-transparent border-0 pb-0">
             <div
               class="d-flex align-items-center justify-content-between"

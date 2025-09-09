@@ -5,30 +5,32 @@
   import UserDetails from "./components/UserDetails.svelte";
 import UserTabs from "./components/UserTabs.svelte";
   import UserNotFound from "./components/UserNotFound.svelte";
-  import type { PageData } from "./$types";
   import {
     initializeUsers,
     usersStore,
   } from "$lib/stores/usersStore";
   import { UserData } from "$lib/assets/data/mock/data";
   import { goto } from "$app/navigation";
-
-  export let data: PageData;
+  import type { MeType, UserType } from "$lib/types/types";
+  export let data: {
+    user: MeType,
+    targetUser: UserType;
+  };
 
   // Initialize users store
   initializeUsers(UserData);
 
   // Get user reactively from store instead of static data
-  $: user =
-    $usersStore.find((u) => u._id === data.user?._id) || data.user;
+  $: targetUser =
+    $usersStore.find((u) => u._id === data.targetUser?._id) || data.targetUser;
 
   function handleBackToUsers() {
     goto("/dashboard/management/users");
   }
 </script>
 
-<DefaultLayout>
-  {#if !user}
+<DefaultLayout user={data.user}>
+  {#if !targetUser}
     <Row>
       <Col>
         <UserNotFound onBack={handleBackToUsers} />
@@ -36,12 +38,12 @@ import UserTabs from "./components/UserTabs.svelte";
     </Row>
   {:else}
     <Row class="justify-content-center">
-                  <UserInfo {user} />
+                  <UserInfo user={targetUser} />
     </Row>
 
     <Row class="justify-content-center">
-      <UserDetails {user} />
-      <UserTabs {user} />
+      <UserDetails user={targetUser} />
+      <UserTabs user={targetUser} />
     </Row>
   {/if}
 </DefaultLayout>

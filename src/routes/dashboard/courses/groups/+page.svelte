@@ -9,11 +9,12 @@
     Row,
   } from "@sveltestrap/sveltestrap";
   import { GroupListData } from "$lib/assets/data/mock/data";
-
+  import type { MeType } from "$lib/types/types";
+  export let data: { user: MeType };
   import GroupTable from "./components/GroupTable.svelte";
 </script>
 
-<DefaultLayout>
+<DefaultLayout user={data.user}>
   <Row>
     <Col xs="12">
       <Card>

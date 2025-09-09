@@ -1,18 +1,22 @@
 import { UserData } from '$lib/assets/data/mock/data';
+import type { PageLoad } from './$types';
 
-export function load({params}) {
+export const load: PageLoad = async ({ params, parent }) => {
+    const { user } = await parent();
+
     if (params.id) {
-        // Find the user by ID from mock data
-        const user = UserData.find(u => u._id === params.id);
-        
+        const targetUser = UserData.find((u) => u._id === params.id) || null;
+
         return {
+            user,
             id: params.id,
-            user: user || null
+            targetUser
         };
-    } 
+    }
 
     return {
+        user,
         id: null,
-        user: null
+        targetUser: null
     };
-}
+};

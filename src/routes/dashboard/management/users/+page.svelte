@@ -23,6 +23,10 @@
   import UserEmailModal from "./components/modals/UserEmailModal.svelte";
   import UserActionsModal from "./components/modals/UserActionsModal.svelte";
   import { initializeUsers } from "$lib/stores/usersStore";
+  import type { MeType } from "$lib/types/types";
+  export let data: {
+    user: MeType;
+  };
 
   let UserData: UserType[] = [...UsersData];
 
@@ -246,7 +250,7 @@
   $: filteredCount = filteredUsers.length;
 </script>
 
-<DefaultLayout>
+<DefaultLayout user={data.user}>
   <Row>
     <Col xs="12">
       <Card>

@@ -17,7 +17,7 @@ export class RegisterService {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (data.code !== 200 || (data.errors && data.errors.length > 0)) {
         return {
           success: false,
           message: data.message || 'Kayıt işlemi başarısız oldu.',
@@ -28,7 +28,6 @@ export class RegisterService {
       return {
         success: true,
         message: data.message || 'Kayıt başarılı',
-        userId: data.data?.userId
       };
     } catch (error) {
       console.error('Registration error:', error);

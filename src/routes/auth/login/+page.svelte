@@ -14,7 +14,7 @@
   import type { LoginCredentials } from "$lib/types/types";
   import { addToast } from "$lib/components/ToastNotification.svelte";
   import ToastNotification from "$lib/components/ToastNotification.svelte";
-
+import departments from "$lib/assets/departments.json";
   const logoSm = "/images/logo-sm.png";
 
   let identifier: string = "";

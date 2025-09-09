@@ -5,9 +5,11 @@
     import AskedQuestions from "./components/AskedQuestions.svelte";
     import QuestionsWithAccordion from "./components/QuestionsWithAccordion.svelte";
     import HaveMoreQuestions from "./components/HaveMoreQuestions.svelte";
+    import type { MeType } from "$lib/types/types";
+    export let data: { user: MeType };
 </script>
 
-<DefaultLayout>
+<DefaultLayout user={data.user}>
     <Row class="justify-content-center">
         <AskedQuestions/>
     </Row>

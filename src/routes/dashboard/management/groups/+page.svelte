@@ -1,5 +1,6 @@
 <script lang="ts">
   import DefaultLayout from "$lib/layouts/DefaultLayout.svelte";
+  import type { MeType } from "$lib/types/types";
   import {
     Button,
     Card,
@@ -24,6 +25,7 @@
   import GroupFilters from "./components/GroupFilters.svelte";
   import GroupTable from "./components/GroupTable.svelte";
   import GroupNewModal from "./components/modals/GroupNewModal.svelte";
+  export let data: { user: MeType };
 
   // Initialize stores with mock data
   initializeUsers(UserData);
@@ -81,7 +83,7 @@
   });
 </script>
 
-<DefaultLayout>
+<DefaultLayout user={data.user}>
   <Row>
     <Col xs="12">
       <Card>

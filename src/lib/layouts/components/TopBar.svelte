@@ -1,12 +1,9 @@
 <script lang="ts">
   import {
-    Badge,
     Dropdown,
     DropdownMenu,
     DropdownToggle,
   } from "@sveltestrap/sveltestrap";
-  import { onMount, onDestroy } from "svelte";
-  import { browser } from "$app/environment";
   import {
     layout,
     setLeftSideBarSize,
@@ -14,15 +11,12 @@
   } from "$lib/stores/layout";
   import { toggleDocumentAttribute } from "$lib/helpers/layout";
   import Breadcrumb from "$lib/components/Breadcrumb.svelte";
-  import { meStore } from "$lib/stores/userStore";
   import type { MeType } from "$lib/types/types";
   import { goto } from "$app/navigation";
   import { addToast } from "$lib/components/ToastNotification.svelte";
   import { env } from "$env/dynamic/public";
-
-  let user: MeType;
-  const unsubscribe = meStore.subscribe((u) => (user = u));
-  onDestroy(() => unsubscribe());
+  
+  export let user: MeType;
 
   let currentTheme: "light" | "dark";
   let currentLeftSideBarSize: "collapsed" | "default";
@@ -204,13 +198,12 @@
               class="d-flex align-items-center dropdown-item py-2 bg-secondary-subtle"
             >
               <div
-                class="flex-grow-1 ms-2 text-truncate align-self-center"
+                class="flex-grow-1 text-truncate align-self-center"
               >
-                <h6 class="my-0 fw-medium text-dark fs-13">
+                <h6 class="my-1 fw-medium text-dark fs-13">
                   {user.firstName}
                   {user.lastName}
                 </h6>
-                <small class="text-muted mb-0">Demo Kullanıcı</small>
               </div>
             </div>
             <div class="dropdown-divider mt-0"></div>

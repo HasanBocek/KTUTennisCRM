@@ -10,7 +10,7 @@
   };
 </script>
 
-<DefaultLayout>
+<DefaultLayout user={data.user}>
   <Row class="justify-content-center">
     <ProfileInfo user={data.user} />
   </Row>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import DefaultLayout from "$lib/layouts/DefaultLayout.svelte";
+  import type { MeType } from "$lib/types/types";
+  export let data: { user: MeType };
   import {
     Col,
     Row,
@@ -109,7 +111,7 @@
   ).length;
 </script>
 
-<DefaultLayout>
+<DefaultLayout user={data.user}>
   {#if !sessionData}
     <Row>
       <Col>

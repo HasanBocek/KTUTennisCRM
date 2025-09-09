@@ -1,18 +1,21 @@
 import { GroupData } from '$lib/assets/data/mock/data';
+import type { PageLoad } from './$types';
 
-export function load({params}) {
+export const load: PageLoad = async ({ params, parent }) => {
+    const { user } = await parent();
+
     if (params.id) {
-        // Find the group by ID from mock data
-        const group = GroupData.find(g => g._id === params.id);
-        
+        const group = GroupData.find((g) => g._id === params.id) || null;
         return {
+            user,
             id: params.id,
-            group: group || null
+            group
         };
-    } 
+    }
 
     return {
+        user,
         id: null,
         group: null
     };
-}
+};

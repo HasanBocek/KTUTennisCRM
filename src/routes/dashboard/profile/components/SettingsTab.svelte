@@ -16,23 +16,16 @@
     GENDERS,
   } from "$lib/helpers/constants";
   import type { MeType } from "$lib/types/types";
-  import {
-    meStore,
-    updateMeInStore,
-  } from "$lib/stores/userStore";
-  import { onDestroy } from "svelte";
+  import departments from "$lib/assets/departments.json";
+  import { ProfileService } from "$lib/services/profile/profileService";
   import SettingCard from "$lib/components/SettingCard.svelte";
-  
+  import { invalidateAll } from "$app/navigation";
   let isUpdating = false;
   let validated = false;
 
   // Local editable copy bound to inputs
-  let editableUser: MeType;
-  const unsubscribe = meStore.subscribe((u) => {
-    editableUser = { ...u };
-  });
+  export let editableUser: MeType;
   // Clean up if component unmounts
-  onDestroy(() => unsubscribe());
 
   const nameRegex = /^[a-zA-ZçğıöşüÇĞİÖŞÜ ]+$/;
   const e164Regex = /^\+[1-9]\d{1,14}$/;
@@ -53,14 +46,16 @@
   $: skillLevelValid = allowedSkillLevels.includes(
     Number(editableUser?.skillLevel ?? NaN)
   );
-  $: departmentValid = effectiveIsStudent
-    ? DEPARTMENTS.includes(
-        (editableUser?.department ?? "").toString()
-      )
-    : (editableUser?.department ?? "") === "";
+  
+  // Improved department validation
+  $: departmentValid = !effectiveIsStudent || 
+    (editableUser.department && 
+     Object.keys(departments).includes(editableUser.department));
+  
   $: gradeValid = effectiveIsStudent
     ? GRADES.includes((editableUser?.grade ?? "").toString())
     : (editableUser?.grade ?? "") === "";
+  
   $: formValid =
     firstNameValid &&
     lastNameValid &&
@@ -77,11 +72,26 @@
   async function handleSubmit(e: Event) {
     e.preventDefault();
     validated = true;
+    
     if (!formValid) return;
+    
     isUpdating = true;
-    // Persist and broadcast to page via store
-    await updateMeInStore(editableUser);
-    isUpdating = false;
+    
+    try {
+      // Use ProfileService to update user profile
+      const result = await ProfileService.updateProfile(editableUser);
+      
+      // Check the result of the update
+      if (result.success) {
+        invalidateAll();
+        validated = false;
+      }
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      // Error handling is now managed in the ProfileService
+    } finally {
+      isUpdating = false;
+    }
   }
 </script>
 
@@ -166,8 +176,8 @@
           on:change={resetValidation}
         >
           <option value="">Seçiniz...</option>
-          {#each DEPARTMENTS as department}
-            <option value={department}>{department}</option>
+          {#each Object.entries(departments) as [code, name]}
+            <option value={code}>{name}</option>
           {/each}
         </Input>
       </Col>

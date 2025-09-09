@@ -10,17 +10,13 @@
     NavItem,
     NavLink,
   } from "@sveltestrap/sveltestrap";
-  import { meStore } from "$lib/stores/userStore";
   import { SessionData } from "$lib/assets/data/mock/data";
   import type { SessionType } from "$lib/types/types";
   import { format } from "date-fns";
   import { tr } from "date-fns/locale";
-  import { onDestroy } from "svelte";
   import type { MeType } from "$lib/types/types";
 
-  let user: MeType;
-  const unsubscribe = meStore.subscribe((u) => (user = u));
-  onDestroy(() => unsubscribe());
+  export let user: MeType;
 
   // Sadece active status'undaki üyelikleri göster
   $: memberships = (user?.memberships || []).filter(membership => membership.status === "active");

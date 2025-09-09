@@ -71,14 +71,13 @@
 
       if (response.success) {
         addToast({
-          message: response.message || 'Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz.',
+          message: response.message || 'Kayıt başarılı!',
           type: 'success'
         });
-
-        // Redirect to login after a short delay
-        setTimeout(() => {
-          goto('/auth/login');
-        }, 2000);
+        addToast({
+          message: 'Lütfen E-Posta adresinize gelen doğrulama linkini kullanarak hesabınızı doğrulayınız.',
+          type: 'success'
+        });
       } else {
         response.errors?.forEach(error => {
           addToast({
