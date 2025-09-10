@@ -14,8 +14,8 @@
   import type { UserType } from "$lib/types/types";
   import { createEventDispatcher } from "svelte";
   import RoleBadge from "$lib/components/RoleBadge.svelte";
+  import departments from '$lib/assets/departments.json';
   import {
-    DEPARTMENTS,
     GRADES,
     GENDERS,
   } from "$lib/helpers/constants";
@@ -72,7 +72,7 @@
       )
     : true;
   $: departmentValid = effectiveIsStudent
-    ? DEPARTMENTS.includes(
+    ? Object.values(departments).includes(
         (selectedUser?.department ?? "").toString()
       )
     : (selectedUser?.department ?? "") === "";
@@ -196,8 +196,8 @@
               on:change={resetValidation}
             >
               <option value="">Seçiniz...</option>
-              {#each DEPARTMENTS as department}
-                <option value={department}>{department}</option>
+              {#each Object.entries(departments) as [code, name]}
+                <option value={code}>{name}</option>
               {/each}
             </Input>
           </Col>

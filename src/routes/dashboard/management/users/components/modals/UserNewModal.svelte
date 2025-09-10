@@ -15,6 +15,7 @@
   import type { UserType } from "$lib/types/types";
   import RoleBadge from "$lib/components/RoleBadge.svelte";
   import { createEventDispatcher } from "svelte";
+  import departments from '$lib/assets/departments.json';
 
   export let isOpen: boolean;
   export let newUser: Partial<UserType> = {};
@@ -23,7 +24,6 @@
 
   // Validation state & helpers
   let validated = false;
-  if (newUser.isStudent === undefined) newUser.isStudent = true;
 
   const nameRegex = /^[a-zA-ZçğıöşüÇĞİÖŞÜ ]+$/;
   const e164Regex = /^\+[1-9]\d{1,14}$/;
@@ -39,17 +39,6 @@
     "9",
     "10",
   ];
-  const allowedDepartments = [
-    "Bilgisayar Mühendisliği",
-    "Spor Bilimleri",
-    "İşletme",
-    "Elektrik Elektronik Mühendisliği",
-    "Makine Mühendisliği",
-    "Psikoloji",
-    "İktisat",
-    "Tıp",
-    "Endüstri Mühendisliği",
-  ];
   const allowedGrades = [
     "Hazırlık",
     "1. Sınıf",
@@ -62,13 +51,17 @@
     "Mezun",
   ];
 
-  $: effectiveIsStudent = (newUser.isStudent ?? true) === true;
+  // Set default isStudent to true if not defined
+  if (newUser.isStudent === undefined) newUser.isStudent = true;
+
+  // Ensure isStudent is always a boolean
+  $: effectiveIsStudent = newUser.isStudent === true;
   $: firstNameValid = nameRegex.test(
     (newUser.firstName ?? "").toString().trim()
-  );
+  ) && (newUser.firstName ?? "").toString().trim().length > 0;
   $: lastNameValid = nameRegex.test(
     (newUser.lastName ?? "").toString().trim()
-  );
+  ) && (newUser.lastName ?? "").toString().trim().length > 0;
   $: isMaleValid = newUser.isMale === "1" || newUser.isMale === "0";
   $: phoneValid = e164Regex.test(
     (newUser.phoneNumber ?? "").toString().trim()
@@ -79,23 +72,19 @@
   $: studentNumberValid = effectiveIsStudent
     ? /^\d{6}$/.test((newUser.studentNumber ?? "").toString().trim())
     : true;
-  // Department/grade required only if student; otherwise should be empty or ignored
   $: departmentValid = effectiveIsStudent
-    ? allowedDepartments.includes(
-        (newUser.department ?? "").toString()
-      )
-    : (newUser.department ?? "") === "";
+    ? Object.keys(departments).includes(newUser.department ?? "")
+    : true;
   $: gradeValid = effectiveIsStudent
     ? allowedGrades.includes((newUser.grade ?? "").toString())
-    : (newUser.grade ?? "") === "";
-  // Email: required if not student, optional if student (but if provided must be valid)
+    : true;
   $: emailStr = (newUser.email ?? "").toString().trim();
   $: emailProvided = emailStr.length > 0;
   $: emailFormatValid =
     !emailProvided || /[^\s@]+@[^\s@]+\.[^\s@]+/.test(emailStr);
-  $: emailValid = effectiveIsStudent
-    ? emailFormatValid
-    : emailProvided && emailFormatValid;
+  $: emailValid = !effectiveIsStudent
+    ? emailProvided && emailFormatValid
+    : true;
   $: formValid =
     firstNameValid &&
     lastNameValid &&
@@ -118,7 +107,27 @@
   function onSubmit(e: Event) {
     e.preventDefault();
     validated = true;
-    if (formValid) submit();
+    
+    console.log('Form Validation:', {
+      firstNameValid,
+      lastNameValid,
+      isMaleValid,
+      phoneValid,
+      skillLevelValid,
+      studentNumberValid,
+      departmentValid,
+      gradeValid,
+      emailValid,
+      formValid
+    });
+
+    console.log('New User Data:', newUser);
+
+    if (formValid) {
+      submit();
+    } else {
+      console.error('Form validation failed');
+    }
   }
 
   function resetValidation() {
@@ -126,16 +135,9 @@
   }
 
   function onIsStudentChange(e: Event) {
-    const target = e.currentTarget as
-      | HTMLInputElement
-      | HTMLSelectElement;
-    let isStudent: boolean;
-    if ((target as HTMLSelectElement).value !== undefined) {
-      isStudent =
-        ((target as HTMLSelectElement).value ?? "true") === "true";
-    } else {
-      isStudent = !!(target as HTMLInputElement).checked;
-    }
+    const target = e.currentTarget as HTMLSelectElement;
+    const isStudent = target.value === 'true';
+    
     newUser.isStudent = isStudent;
     if (!isStudent) {
       newUser.studentNumber = undefined;
@@ -307,7 +309,7 @@
         <Input
           id="new-isStudent"
           type="select"
-          value={effectiveIsStudent ? "true" : "false"}
+          value={newUser.isStudent === true ? 'true' : 'false'}
           on:change={onIsStudentChange}
         >
           <option value="true">Evet</option>
@@ -346,8 +348,8 @@
             on:change={resetValidation}
           >
             <option value="">Seçiniz...</option>
-            {#each allowedDepartments as dep}
-              <option value={dep}>{dep}</option>
+            {#each Object.entries(departments) as [code, name]}
+              <option value={code}>{name}</option>
             {/each}
           </Input>
         </Col>

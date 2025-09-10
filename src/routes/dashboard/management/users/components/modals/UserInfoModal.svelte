@@ -68,7 +68,7 @@
       </Row>
 
       <p class="text-muted fw-medium mb-2 text-center">
-        {selectedUser.notes || "Veri Yok"}
+        Not: {selectedUser.notes || "Veri Yok"}
       </p>
       <div class="mb-3 d-flex justify-content-center gap-2">
         {#if sortedRoles.length > 0}

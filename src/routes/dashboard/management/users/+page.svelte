@@ -9,7 +9,7 @@
     Col,
     Row,
   } from "@sveltestrap/sveltestrap";
-  import { UserData as UsersData } from "$lib/assets/data/mock/data";
+  // Using real users from server load instead of mock data
   import { GroupData } from "$lib/assets/data/mock/data";
   import type { RoleType } from "$lib/types/role";
   import type { UserType, GroupType } from "$lib/types/types";
@@ -22,16 +22,61 @@
   import UserNewModal from "./components/modals/UserNewModal.svelte";
   import UserEmailModal from "./components/modals/UserEmailModal.svelte";
   import UserActionsModal from "./components/modals/UserActionsModal.svelte";
-  import { initializeUsers } from "$lib/stores/usersStore";
   import type { MeType } from "$lib/types/types";
+  import { UserService } from "$lib/services/user/userService";
+  import { addToast } from "$lib/components/ToastNotification.svelte";
+  import { invalidateAll } from "$app/navigation";
   export let data: {
     user: MeType;
+    users: any[];
   };
 
-  let UserData: UserType[] = [...UsersData];
+  function toDate(value: unknown): Date {
+    return value ? new Date(value as string) : new Date(0);
+  }
 
-  // Initialize users store
-  initializeUsers(UserData);
+  // Normalize API users to local UserType shape
+  function normalizeUsers(users: any[]): UserType[] {
+    return users.map((u: any) => ({
+      _id: u._id ?? u.id,
+      firstName: u.firstName ?? "",
+      lastName: u.lastName ?? "",
+      isMale: String(
+        u.isMale ??
+          (u.gender === "male"
+            ? "1"
+            : u.gender === "female"
+              ? "0"
+              : "1")
+      ),
+      phoneNumber: u.phoneNumber ?? "",
+      email: u.email ?? "",
+      roles: Array.isArray(u.roles) ? u.roles : [],
+      studentNumber: u.studentNumber ?? undefined,
+      isStudent: Boolean(u.isStudent),
+      department: u.department ?? undefined,
+      grade: u.grade ?? undefined,
+      createdAt: toDate(u.createdAt),
+      lastLoginAt: toDate(u.lastLoginAt),
+      skillLevel:
+        typeof u.skillLevel === "number"
+          ? u.skillLevel
+          : Number(u.skillLevel ?? 0),
+      notes: u.notes ?? undefined,
+      isEmailVerified: Boolean(u.isEmailVerified),
+      memberships: (u.memberships ?? []).map((m: any) => ({
+        _id: m._id ?? m.id,
+        joinDate: toDate(m.joinDate),
+        group: (m.group as GroupType) ?? ({} as GroupType),
+        status: m.status ?? "active",
+      })),
+    }));
+  }
+
+  // Re-normalize users when data changes (after invalidateAll)
+  $: UserData = normalizeUsers(data.users);
+
+  // Directly using page data (no usersStore)
 
   // filtre panelini göster/gizle
   let showFilters = false;
@@ -104,50 +149,173 @@
   async function handleUpdateUser() {
     if (!selectedUser) return;
     isUpdating = true;
-    // mock API delay
-    await new Promise((r) => setTimeout(r, 500));
-    const idx = UserData.findIndex(
-      (u) => u._id === selectedUser!._id
+
+    const accessToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("accessToken="))
+      ?.split("=")[1];
+
+    if (!accessToken) {
+      addToast({
+        message: "Oturum açılmamış",
+        type: "danger",
+      });
+      isUpdating = false;
+      return;
+    }
+
+    const result = await UserService.updateUser(
+      selectedUser._id,
+      selectedUser,
+      accessToken
     );
-    if (idx > -1) UserData[idx] = selectedUser!;
+
+    if (result.success) {
+      addToast({
+        message: result.message,
+        type: "success",
+      });
+      // Refresh the page data to get updated user list
+      await invalidateAll();
+      closeEdit();
+    } else {
+      result.errors?.forEach((error) => {
+        addToast({
+          message: error,
+          type: "danger",
+        });
+      });
+    }
+
     isUpdating = false;
-    closeEdit();
   }
   async function handleUpdateEmail() {
     if (!selectedUser) return;
     isUpdatingEmail = true;
-    await new Promise((r) => setTimeout(r, 500));
-    const idx = UserData.findIndex(
-      (u) => u._id === selectedUser!._id
-    );
-    if (idx > -1) {
-      UserData[idx] = {
-        ...UserData[idx],
-        email: selectedUser!.email,
-        isEmailVerified: selectedUser!.isEmailVerified,
-      };
+
+    const accessToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("accessToken="))
+      ?.split("=")[1];
+
+    if (!accessToken) {
+      addToast({
+        message: "Oturum açılmamış",
+        type: "danger",
+      });
+      isUpdatingEmail = false;
+      return;
     }
+
+    const result = await UserService.updateUserEmail(
+      selectedUser._id,
+      selectedUser.email,
+      selectedUser.isEmailVerified,
+      accessToken
+    );
+
+    if (result.success) {
+      addToast({
+        message: result.message,
+        type: "success",
+      });
+      // Refresh the page data to get updated user list
+      await invalidateAll();
+      closeEmail();
+    } else {
+      result.errors?.forEach((error) => {
+        addToast({
+          message: error,
+          type: "danger",
+        });
+      });
+    }
+
     isUpdatingEmail = false;
-    closeEmail();
   }
   async function handleDeleteUser() {
     if (!selectedUser) return;
     isDeleting = true;
-    await new Promise((r) => setTimeout(r, 500));
-    UserData = UserData.filter((u) => u._id !== selectedUser!._id);
+
+    const accessToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("accessToken="))
+      ?.split("=")[1];
+
+    if (!accessToken) {
+      addToast({
+        message: "Oturum açılmamış",
+        type: "danger",
+      });
+      isDeleting = false;
+      return;
+    }
+
+    const result = await UserService.deleteUser(
+      selectedUser._id,
+      accessToken
+    );
+
+    if (result.success) {
+      addToast({
+        message: result.message,
+        type: "success",
+      });
+      // Refresh the page data to get updated user list
+      await invalidateAll();
+      closeDelete();
+    } else {
+      result.errors?.forEach((error) => {
+        addToast({
+          message: error,
+          type: "danger",
+        });
+      });
+    }
+
     isDeleting = false;
-    closeDelete();
   }
   async function handleCreateUser() {
     isCreating = true;
-    await new Promise((r) => setTimeout(r, 500));
-    const newId = Date.now().toString();
-    UserData = [
-      { ...(newUser as UserType), _id: newId, createdAt: new Date() },
-      ...UserData,
-    ];
+
+    const accessToken = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("accessToken="))
+      ?.split("=")[1];
+
+    if (!accessToken) {
+      addToast({
+        message: "Oturum açılmamış",
+        type: "danger",
+      });
+      isCreating = false;
+      return;
+    }
+
+    const result = await UserService.createUser({
+      ...newUser,
+      isStudent: newUser.isStudent === true || newUser.isStudent === 'true' || newUser.isStudent === undefined,
+      roles: newUser.roles ?? ['member']
+    }, accessToken);
+
+    if (result.success) {
+      addToast({
+        message: result.message,
+        type: "success",
+      });
+      // Refresh the page data to get updated user list
+      await invalidateAll();
+      closeNew();
+    } else {
+      const errorMessage = result.message || 'Kullanıcı oluşturulamadı';
+      addToast({
+        message: errorMessage,
+        type: "danger",
+      });
+      console.error('User creation error:', result);
+    }
+
     isCreating = false;
-    closeNew();
   }
 
   // seçili filtreler
@@ -226,8 +394,10 @@
     const matchGroup =
       !filters.groups.length ||
       (u.memberships &&
-        u.memberships.some((m) =>
-          filters.groups.includes(m.group.name) && m.status === "active"
+        u.memberships.some(
+          (m) =>
+            filters.groups.includes(m.group.name) &&
+            m.status === "active"
         ));
     return (
       matchSearch &&
