@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Card, CardBody, Button } from "@sveltestrap/sveltestrap";
-  export let onBack: () => void;
+  import { goto } from "$app/navigation";
 </script>
 
 <Card>
@@ -10,7 +10,7 @@
     <p class="text-muted">
       Aradığınız kullanıcı bulunamadı veya silinmiş olabilir.
     </p>
-    <Button color="primary" on:click={onBack}>
+    <Button color="primary" on:click={() => goto("/dashboard/management/users")}>
       <i class="fas fa-arrow-left me-1"></i>Kullanıcı Listesine Dön
     </Button>
   </CardBody>

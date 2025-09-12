@@ -22,7 +22,6 @@
     ToastBody,
   } from "@sveltestrap/sveltestrap";
   import {
-    DEPARTMENTS,
     GRADES,
     GENDERS,
   } from "$lib/helpers/constants";
@@ -32,6 +31,10 @@
   import { updateUser } from "$lib/stores/usersStore";
   import SettingCard from "$lib/components/SettingCard.svelte";
   import LoadingSpinner from "$lib/components/LoadingSpinner.svelte";
+  import departments from "$lib/assets/departments.json";
+  import { UserService } from "$lib/services/user/userService";
+  import { page } from "$app/stores";
+  import { addToast } from "$lib/components/ToastNotification.svelte";
 
   export let user: UserType;
 
@@ -42,10 +45,6 @@
   let validated = false;
   let emailValidated = false;
   let deleteConfirmModal = false;
-
-  // Toast notifications
-  let showSuccessToast = false;
-  let toastMessage = "";
 
   // Local editable copies
   let editableUser: UserType;
@@ -83,9 +82,7 @@
     Number(editableUser?.skillLevel ?? NaN)
   );
   $: departmentValid = effectiveIsStudent
-    ? DEPARTMENTS.includes(
-        (editableUser?.department ?? "").toString()
-      )
+    ? Object.keys(departments).includes(editableUser?.department ?? "")
     : (editableUser?.department ?? "") === "";
   $: gradeValid = effectiveIsStudent
     ? GRADES.includes((editableUser?.grade ?? "").toString())
@@ -131,15 +128,6 @@
     if (emailValidated) emailValidated = false;
   }
 
-  function showToast(message: string) {
-    toastMessage = message;
-    showSuccessToast = true;
-    // Auto hide after 3 seconds
-    setTimeout(() => {
-      showSuccessToast = false;
-    }, 3000);
-  }
-
   function toggleRole(roleId: string, isChecked: boolean) {
     const currentRoles = editableUser.roles || [];
     editableUser.roles = isChecked
@@ -155,22 +143,55 @@
 
     isUpdating = true;
     try {
-      // Mock API delay
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      const accessToken = $page.data.session?.accessToken;
+      if (!accessToken) {
+        throw new Error("Oturum açılmamış");
+      }
 
-      // Update the user in the global store
-      updateUser(editableUser);
+      const result = await UserService.updateUser(
+        user._id, 
+        editableUser, 
+        accessToken
+      );
 
-      // Update the local user prop reference (this will trigger reactive updates)
-      user = { ...editableUser };
+      if (result.success) {
+        // Update the user in the global store
+        updateUser(result.user);
 
-      // Reset validation state
-      validated = false;
+        // Update the local user prop reference (this will trigger reactive updates)
+        user = result.user;
+        editableUser = { ...result.user };
 
-      // Show success message
-      showToast("Profil bilgileri başarıyla güncellendi!");
+        // Reset validation state
+        validated = false;
+
+        // Show success message
+        addToast({
+          message: result.message || "Profil bilgileri başarıyla güncellendi!",
+          type: "success"
+        });
+      } else {
+        // Show error messages
+        if (result.errors && result.errors.length > 0) {
+          result.errors.forEach(error => {
+            addToast({
+              message: error,
+              type: "danger"
+            });
+          });
+        } else {
+          addToast({
+            message: result.message || "Profil güncellenirken bir hata oluştu!",
+            type: "danger"
+          });
+        }
+      }
     } catch (error) {
-      showToast("Profil güncellenirken bir hata oluştu!");
+      console.error("Profile update error:", error);
+      addToast({
+        message: "Profil güncellenirken bir hata oluştu!",
+        type: "danger"
+      });
     } finally {
       isUpdating = false;
     }
@@ -183,45 +204,113 @@
 
     isUpdatingEmail = true;
     try {
-      // Mock API delay
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      // Update the user's email
-      const updatedUser = { ...editableUser, email: newEmail };
-
-      // Update the user in the global store
-      updateUser(updatedUser);
-
-      // Update local references
-      user = { ...updatedUser };
-      editableUser = { ...updatedUser };
-
-      // Reset form after successful update
-      newEmail = user.email || "";
-      emailValidated = false;
-
-      // Show success message
-      showToast("E-posta adresi başarıyla güncellendi!");
-    } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error("E-posta güncellenirken hata oluştu:", error);
+      const accessToken = $page.data.session?.accessToken;
+      if (!accessToken) {
+        throw new Error("Oturum açılmamış");
       }
-      showToast("E-posta güncellenirken bir hata oluştu!");
+
+      const result = await UserService.updateUserEmail(
+        user._id, 
+        newEmail, 
+        editableUser.isEmailVerified, 
+        accessToken
+      );
+
+      if (result.success) {
+        // Update the user in the global store
+        updateUser(result.user);
+
+        // Update local references
+        user = result.user;
+        editableUser = { ...result.user };
+
+        // Reset form after successful update
+        newEmail = user.email || "";
+        emailValidated = false;
+
+        // Show success message
+        addToast({
+          message: result.message || "E-posta adresi başarıyla güncellendi!",
+          type: "success"
+        });
+      } else {
+        // Show error messages
+        if (result.errors && result.errors.length > 0) {
+          result.errors.forEach(error => {
+            addToast({
+              message: error,
+              type: "danger"
+            });
+          });
+        } else {
+          addToast({
+            message: result.message || "E-posta güncellenirken bir hata oluştu!",
+            type: "danger"
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Email update error:", error);
+      addToast({
+        message: "E-posta güncellenirken bir hata oluştu!",
+        type: "danger"
+      });
     } finally {
       isUpdatingEmail = false;
     }
   }
 
-  function handleDeleteRequest() {
-    deleteConfirmModal = true;
-  }
-
   async function handleAccountDelete() {
     isDeleting = true;
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    // In real app, this would delete the account and redirect
-    isDeleting = false;
-    deleteConfirmModal = false;
+    try {
+      const accessToken = $page.data.session?.accessToken;
+      if (!accessToken) {
+        throw new Error("Oturum açılmamış");
+      }
+
+      const result = await UserService.deleteUser(
+        user._id, 
+        accessToken
+      );
+
+      if (result.success) {
+        // Redirect or handle successful deletion
+        addToast({
+          message: result.message || "Kullanıcı başarıyla silindi!",
+          type: "success"
+        });
+        // You might want to add a redirect here, e.g.:
+        // goto('/dashboard/users');
+      } else {
+        // Show error messages
+        if (result.errors && result.errors.length > 0) {
+          result.errors.forEach(error => {
+            addToast({
+              message: error,
+              type: "danger"
+            });
+          });
+        } else {
+          addToast({
+            message: result.message || "Kullanıcı silinemedi!",
+            type: "danger"
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Account delete error:", error);
+      addToast({
+        message: "Kullanıcı silinemedi!",
+        type: "danger"
+      });
+    } finally {
+      isDeleting = false;
+      deleteConfirmModal = false;
+    }
+  }
+
+  function handleDeleteRequest() {
+    deleteConfirmModal = true;
   }
 </script>
 
@@ -316,8 +405,8 @@
               on:change={resetValidation}
             >
               <option value="">Seçiniz...</option>
-              {#each DEPARTMENTS as department}
-                <option value={department}>{department}</option>
+              {#each Object.entries(departments) as [code, name]}
+                <option value={code}>{name}</option>
               {/each}
             </Input>
           </Col>
@@ -518,7 +607,7 @@
             disabled={isUpdatingEmail}
           >
             <i
-              class={`fas fa-${isUpdatingEmail ? "spinner fa-spin" : "save"} me-1`}
+              class={`fas ${isUpdatingEmail ? "fa-spinner fa-spin" : "fa-save"} me-1`}
             ></i>
             {isUpdatingEmail ? "Kaydediliyor..." : "Kaydet"}
           </Button>
@@ -618,25 +707,12 @@
       on:click={handleAccountDelete}
     >
       <i
-        class={`fas fa-${isDeleting ? "spinner fa-spin" : "trash-alt"} me-1`}
+        class={`fas ${isDeleting ? "fa-spinner fa-spin" : "fa-trash-alt"} me-1`}
       ></i>
       {isDeleting ? "Siliniyor..." : "Hesabı Sil"}
     </Button>
   </ModalFooter>
 </Modal>
-
-<!-- Success Toast -->
-<div class="position-fixed top-0 end-0 p-3" style="z-index: 1200;">
-  <Toast
-    isOpen={showSuccessToast}
-    toggle={() => (showSuccessToast = false)}
-  >
-    <ToastBody class="d-flex align-items-center">
-      <i class="fas fa-check-circle text-success me-2"></i>
-      {toastMessage}
-    </ToastBody>
-  </Toast>
-</div>
 
 <style>
   /* Tab Content Styling */
