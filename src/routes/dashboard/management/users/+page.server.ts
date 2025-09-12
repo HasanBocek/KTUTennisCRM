@@ -1,41 +1,27 @@
-import { env } from '$env/dynamic/public';
-import { redirect, error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { redirect } from "@sveltejs/kit";
+import type { PageServerLoad } from "./$types";
+import { apiGet } from "$lib/utils/api";
 
-export const load: PageServerLoad = async ({ locals, cookies, fetch }) => {
+export const load: PageServerLoad = async ({
+  locals,
+  cookies,
+}) => {
   if (!locals.user) {
-    throw redirect(302, '/auth/login');
+    throw redirect(302, "/auth/login");
   }
 
-  const accessToken = cookies.get('accessToken');
+  const accessToken = cookies.get("accessToken");
   if (!accessToken) {
-    throw redirect(302, '/auth/login');
+    throw redirect(302, "/auth/login");
   }
 
-  try {
-    const response = await fetch(`${env.PUBLIC_BACKEND_URL}/user/`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
-    });
+  // Fetch users using the new API utility
+  const usersResult = await apiGet('/user/', { accessToken });
 
-    if (!response.ok) {
-      throw error(response.status, 'Kullanıcılar getirilemedi.');
-    }
-
-    const data = await response.json();
-    if (data.code !== 200) {
-      throw error(500, data.message || 'Kullanıcılar getirilemedi.');
-    }
-
-    return {
-      user: locals.user,
-      users: data.data ?? []
-    };
-  } catch (err) {
-    console.error('Users load error:', err);
-    throw error(500, 'Kullanıcılar getirilemedi.');
-  }
+  // Return data based on API response
+  return {
+    user: locals.user,
+    users: usersResult.success ? usersResult.data ?? [] : [],
+    errors: usersResult.errors
+  };
 };
-
-

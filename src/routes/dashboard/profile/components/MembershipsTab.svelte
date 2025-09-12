@@ -270,7 +270,7 @@
               {/each}
             </ul>
           {:else}
-            <div class="text-muted">Seans bulunmuyor.</div>
+            <div class="text-muted">Ders bulunmuyor.</div>
           {/if}
         {:else}
           <div class="text-muted">Üyelik bulunamadı.</div>

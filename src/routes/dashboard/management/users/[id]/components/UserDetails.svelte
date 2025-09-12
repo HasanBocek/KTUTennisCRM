@@ -13,6 +13,7 @@
   import type { UserType } from "$lib/types/types";
   import { getRoleById } from "$lib/types/role";
   import type { RoleType } from "$lib/types/role";
+  import departments from "$lib/assets/departments.json";
 
   export let user: UserType;
 
@@ -132,7 +133,7 @@
           <i
             class="las la-graduation-cap me-2 text-secondary fs-22 align-middle"
           ></i>
-          <b> Bölüm</b>: {user.department || "Veri Yok"}
+          <b> Bölüm</b>: {(user.department && departments[user.department]) || "Veri Yok"}
         </li>
         <li class="mt-2">
           <i

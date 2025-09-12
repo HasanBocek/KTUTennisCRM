@@ -1,20 +1,32 @@
-import { env } from '$env/dynamic/public';
-import type { UserType } from '$lib/types/types';
+import { env } from "$env/dynamic/public";
+import type { UserType } from "$lib/types/types";
 
 export class UserService {
   private static baseUrl = env.PUBLIC_BACKEND_URL;
 
   static async updateUser(
     userId: string,
-    userData: Partial<UserType>,
-    accessToken: string
-  ): Promise<{ success: boolean; message: string; user?: any, errors?: string[] }> {
+    userData: Partial<UserType>
+  ): Promise<{
+    success: boolean;
+    message: string;
+    user?: any;
+    errors?: string[];
+  }> {
     try {
+      const accessToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("accessToken="))
+        ?.split("=")[1];
+
+      if (!accessToken) {
+        throw new Error("Oturum açılmamış");
+      }
       const response = await fetch(`${this.baseUrl}/user/${userId}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           firstName: userData.firstName,
@@ -29,9 +41,9 @@ export class UserService {
           skillLevel: userData.skillLevel?.toString(),
           isEmailVerified: userData.isEmailVerified,
           roles: userData.roles,
-          notes: userData.notes
+          notes: userData.notes,
         }),
-        credentials: 'include'
+        credentials: "include",
       });
       console.log(userData.isStudent);
 
@@ -40,22 +52,25 @@ export class UserService {
       if (data.code !== 200) {
         return {
           success: false,
-          message: data.message || 'Kullanıcı güncellenemedi.',
-          errors: data.errors || []
+          message: data.message || "Kullanıcı güncellenemedi.",
+          errors: data.errors || [],
         };
       }
 
       return {
         success: true,
-        message: data.message || 'Kullanıcı başarıyla güncellendi.',
-        user: data.data?.user
+        message: data.message || "Kullanıcı başarıyla güncellendi.",
+        user: data.data,
       };
     } catch (error) {
-      console.error('User update error:', error);
+      console.error("User update error:", error);
       return {
         success: false,
-        message: 'Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.',
-        errors: ["Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin."]
+        message:
+          "Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        errors: [
+          "Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        ],
       };
     }
   }
@@ -63,21 +78,33 @@ export class UserService {
   static async updateUserEmail(
     userId: string,
     email: string,
-    isEmailVerified: boolean,
-    accessToken: string
-  ): Promise<{ success: boolean; message: string; user?: any, errors?: string[] }> {
+    isEmailVerified: boolean
+  ): Promise<{
+    success: boolean;
+    message: string;
+    user?: any;
+    errors?: string[];
+  }> {
     try {
-      const response = await fetch(`${this.baseUrl}/user/${userId}`, {
-        method: 'PATCH',
+      const accessToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("accessToken="))
+        ?.split("=")[1];
+
+      if (!accessToken) {
+        throw new Error("Oturum açılmamış");
+      }
+      const response = await fetch(`${this.baseUrl}/user/${userId}/email`, {
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           email,
-          isEmailVerified
+          isEmailVerified,
         }),
-        credentials: 'include'
+        credentials: "include",
       });
 
       const data = await response.json();
@@ -85,37 +112,51 @@ export class UserService {
       if (data.code !== 200) {
         return {
           success: false,
-          message: data.message || 'E-posta güncellenemedi.',
-          errors: data.errors || []
+          message: data.message || "E-posta güncellenemedi.",
+          errors: data.errors || [],
         };
       }
 
       return {
         success: true,
-        message: data.message || 'E-posta başarıyla güncellendi.',
-        user: data.data?.user
+        message: data.message || "E-posta başarıyla güncellendi.",
+        user: data.data,
       };
     } catch (error) {
-      console.error('Email update error:', error);
+      console.error("Email update error:", error);
       return {
         success: false,
-        message: 'Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.',
-        errors: ["Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin."]
+        message:
+          "Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        errors: [
+          "Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        ],
       };
     }
   }
 
   static async deleteUser(
-    userId: string,
-    accessToken: string
-  ): Promise<{ success: boolean; message: string; errors?: string[] }> {
+    userId: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    errors?: string[];
+  }> {
     try {
+      const accessToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("accessToken="))
+        ?.split("=")[1];
+
+      if (!accessToken) {
+        throw new Error("Oturum açılmamış");
+      }
       const response = await fetch(`${this.baseUrl}/user/${userId}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${accessToken}`
+          Authorization: `Bearer ${accessToken}`,
         },
-        credentials: 'include'
+
       });
 
       const data = await response.json();
@@ -123,35 +164,50 @@ export class UserService {
       if (data.code !== 200) {
         return {
           success: false,
-          message: data.message || 'Kullanıcı silinemedi.',
-          errors: data.errors || []
+          message: data.message || "Kullanıcı silinemedi.",
+          errors: data.errors || [],
         };
       }
 
       return {
         success: true,
-        message: data.message || 'Kullanıcı başarıyla silindi.'
+        message: data.message || "Kullanıcı başarıyla silindi.",
       };
     } catch (error) {
-      console.error('User delete error:', error);
+      console.error("User delete error:", error);
       return {
         success: false,
-        message: 'Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.',
-        errors: ["Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin."]
+        message:
+          "Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        errors: [
+          "Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        ],
       };
     }
   }
 
   static async createUser(
-    userData: Partial<UserType>,
-    accessToken: string
-  ): Promise<{ success: boolean; message: string; user?: any, errors?: string[] }> {
+    userData: Partial<UserType>
+  ): Promise<{
+    success: boolean;
+    message: string;
+    user?: any;
+    errors?: string[];
+  }> {
     try {
+      const accessToken = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("accessToken="))
+        ?.split("=")[1];
+
+      if (!accessToken) {
+        throw new Error("Oturum açılmamış");
+      }
       const response = await fetch(`${this.baseUrl}/user/`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           firstName: userData.firstName,
@@ -165,9 +221,9 @@ export class UserService {
           grade: userData.grade,
           skillLevel: userData.skillLevel?.toString(),
           isEmailVerified: userData.isEmailVerified,
-          roles: userData.roles
+          roles: userData.roles,
         }),
-        credentials: 'include'
+        credentials: "include",
       });
 
       const data = await response.json();
@@ -175,22 +231,25 @@ export class UserService {
       if (data.code !== 200) {
         return {
           success: false,
-          message: data.message || "Kullanıcı oluşturulamadı.",
-          errors: data.errors || []
+          message: data.message || "Kullanıcı oluşturulamadı.",
+          errors: data.errors || [],
         };
       }
 
       return {
         success: true,
-        message: data.message || 'Kullanıcı başarıyla oluşturuldu.',
-        user: data.data?.user
+        message: data.message || "Kullanıcı başarıyla oluşturuldu.",
+        user: data.data,
       };
     } catch (error) {
-      console.error('User create error:', error);
+      console.error("User create error:", error);
       return {
         success: false,
-        message: 'Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.',
-        errors: ["Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin."]
+        message:
+          "Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        errors: [
+          "Sunucuyla bağlantı kurulamadı. Lütfen tekrar deneyin.",
+        ],
       };
     }
   }

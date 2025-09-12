@@ -167,7 +167,6 @@
     const result = await UserService.updateUser(
       selectedUser._id,
       selectedUser,
-      accessToken
     );
 
     if (result.success) {
@@ -210,8 +209,7 @@
     const result = await UserService.updateUserEmail(
       selectedUser._id,
       selectedUser.email,
-      selectedUser.isEmailVerified,
-      accessToken
+      selectedUser.isEmailVerified
     );
 
     if (result.success) {
@@ -252,8 +250,7 @@
     }
 
     const result = await UserService.deleteUser(
-      selectedUser._id,
-      accessToken
+      selectedUser._id
     );
 
     if (result.success) {
@@ -294,9 +291,8 @@
 
     const result = await UserService.createUser({
       ...newUser,
-      isStudent: newUser.isStudent === true || newUser.isStudent === 'true' || newUser.isStudent === undefined,
       roles: newUser.roles ?? ['member']
-    }, accessToken);
+    });
 
     if (result.success) {
       addToast({
@@ -307,11 +303,12 @@
       await invalidateAll();
       closeNew();
     } else {
-      const errorMessage = result.message || 'Kullanıcı oluşturulamadı';
-      addToast({
-        message: errorMessage,
-        type: "danger",
-      });
+      result.errors?.forEach(error => {
+          addToast({
+            message: error,
+            type: "danger"
+          });
+        });
       console.error('User creation error:', result);
     }
 
