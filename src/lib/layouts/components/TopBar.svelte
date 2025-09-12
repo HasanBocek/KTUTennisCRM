@@ -11,16 +11,17 @@
   } from "$lib/stores/layout";
   import { toggleDocumentAttribute } from "$lib/helpers/layout";
   import Breadcrumb from "$lib/components/Breadcrumb.svelte";
-  import type { MeType } from "$lib/types/types";
+  import type { MeType, GroupType, UserType } from "$lib/types/types";
   import { goto } from "$app/navigation";
   import { addToast } from "$lib/components/ToastNotification.svelte";
   import { env } from "$env/dynamic/public";
   
   export let user: MeType;
+  export let targetGroup: GroupType | null = null;
+  export let targetUser: UserType | null = null;
 
   let currentTheme: "light" | "dark";
   let currentLeftSideBarSize: "collapsed" | "default";
-
   $: {
     const { theme, leftSideBarSize } = $layout;
     currentTheme = theme;
@@ -159,7 +160,7 @@
           <h6
             class="mb-0 fw-normal text-muted text-truncate fs-14 mt-1"
           >
-            <Breadcrumb />
+            <Breadcrumb targetUser={targetUser} targetGroup={targetGroup} />
           </h6>
         </li>
       </ul>

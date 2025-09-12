@@ -18,7 +18,7 @@
     data.targetUser;
 </script>
 
-<DefaultLayout user={data.user}>
+<DefaultLayout user={data.user} targetUser={targetUser}>
   {#if !targetUser}
     <Row>
       <Col>

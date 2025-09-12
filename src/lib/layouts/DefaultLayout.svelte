@@ -5,10 +5,11 @@
   import { layout, setLeftSideBarSize } from "$lib/stores/layout";
   import { onMount, onDestroy } from "svelte";
   import { browser } from "$app/environment";
-  import type { MeType } from "$lib/types/types";
+  import type { MeType, GroupType, UserType } from "$lib/types/types";
 
   export let user: MeType;
-  
+  export let targetGroup: GroupType | null = null;
+  export let targetUser: UserType | null = null;
   let currentLeftSideBarSize: "collapsed" | "default";
   let isMobile: boolean = false; // Default for SSR
 
@@ -66,7 +67,7 @@
   });
 </script>
 
-<TopBar user={user} />
+<TopBar user={user} targetGroup={targetGroup} targetUser={targetUser} />
 
 <LeftSideBar />
 

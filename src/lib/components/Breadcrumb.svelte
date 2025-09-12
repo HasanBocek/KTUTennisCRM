@@ -1,8 +1,11 @@
 <script lang="ts">
-    import { page } from "$app/stores";
+  import { page } from "$app/stores";
   import { breadcrumbTranslations } from "$lib/helpers/breadcrumbTranslations";
-  import { getGroupById } from "$lib/stores/groupsStore";
-  import { getUserById } from "$lib/stores/usersStore";
+  import type { UserType } from "$lib/types/types";
+  import type { GroupType } from "$lib/types/types";
+
+  export let targetUser: UserType | null = null;
+  export let targetGroup: GroupType | null = null;
 
   let currentPath: string = "";
   let segments: string[] = [];
@@ -13,18 +16,13 @@
   // Dynamic segment display logic
   function getSegmentDisplay(segment: string, index: number): string {
     // Check if this is a group ID (previous segment is "groups")
-    if (index > 0 && segments[index - 1] === "groups") {
-      const group = getGroupById(segment);
-      return group ? group.name : segment;
+    if (index > 0 && segments[index - 1] === "groups" && targetGroup) {
+      return targetGroup.name;
     }
     
-    if (index > 0 && segments[index - 1] === "users") {
-      const user = getUserById(segment);
-      if (user) {
-        const fullName = `${user.firstName || ""} ${user.lastName || ""}`.trim();
-        return fullName || `Kullanıcı ${segment}`;
-      }
-      return `Kullanıcı ${segment}`;
+    if (index > 0 && segments[index - 1] === "users" && targetUser) {
+      const fullName = `${targetUser.firstName || ""} ${targetUser.lastName || ""}`.trim();
+      return fullName || `Kullanıcı ${segment}`;
     }
 
     // Use translation or fallback to segment
