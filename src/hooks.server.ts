@@ -10,8 +10,14 @@ export const handle: Handle = async ({ event, resolve }) => {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
+      }).catch((error) => {
+        //sunucu kapalıysa erişilemiyorsa bir çözüm düşünülecek
+        return {
+          ok: false,
+          json: () => Promise.resolve({ code: 500, message: 'Server Error' })
+        };
       });
-
+    
       if (res.ok) {
         const data = await res.json();
         if (data.code === 200) {

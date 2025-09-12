@@ -1,6 +1,5 @@
 <script lang="ts">
   import DefaultLayout from "$lib/layouts/DefaultLayout.svelte";
-  import type { MeType } from "$lib/types/types";
   import {
     Button,
     Card,
@@ -10,77 +9,160 @@
     Col,
     Row,
   } from "@sveltestrap/sveltestrap";
-  import { GroupData } from "$lib/assets/data/mock/data";
-  import type { GroupType } from "$lib/types/types";
-  import { UserData } from "$lib/assets/data/mock/data";
-  import {
-    groupsStore,
-    initializeGroups,
-    addGroup,
-  } from "$lib/stores/groupsStore";
-  import {
-    coachesStore,
-    initializeUsers,
-  } from "$lib/stores/usersStore";
+  import type { MeType, GroupType } from "$lib/types/types";
+  import { ROLES } from "$lib/types/role";
   import GroupFilters from "./components/GroupFilters.svelte";
   import GroupTable from "./components/GroupTable.svelte";
   import GroupNewModal from "./components/modals/GroupNewModal.svelte";
-  export let data: { user: MeType };
+  import { addToast } from "$lib/components/ToastNotification.svelte";
+  import { invalidateAll } from "$app/navigation";
+  import { GroupService } from "$lib/services/group/groupService"; // Create this service
+  import type { RoleType } from "$lib/types/role";
 
-  // Initialize stores with mock data
-  initializeUsers(UserData);
-  initializeGroups(GroupData);
+  export let data: {
+    user: MeType;
+    groups: any[];
+    coaches: any[];
+  };
 
-  let showNewModal = false;
-  let newGroup: Partial<GroupType> = {};
-  let isCreating = false;
-
-  function openNew() {
-    newGroup = {};
-    showNewModal = true;
-  }
-  function closeNew() {
-    showNewModal = false;
-    newGroup = {};
-  }
-  async function handleCreateGroup() {
-    isCreating = true;
-    // Simulate API delay
-    await new Promise((r) => setTimeout(r, 300));
-
-    // Create group and add to store
-    const createdGroup: GroupType = {
-      _id: Date.now().toString(),
-      name: newGroup.name || "",
-      description: newGroup.description || "",
-      coaches: newGroup.coaches || [],
-      schedule: newGroup.schedule || [],
-      maxMembers: newGroup.maxMembers || 0,
-      membershipOpen: newGroup.membershipOpen || true,
-      payment: newGroup.payment || {
+  // Normalize API groups to local GroupType shape
+  function normalizeGroups(groups: any[]): GroupType[] {
+    return groups.map((g: any) => ({
+      _id: g._id ?? g.id,
+      name: g.name ?? "",
+      description: g.description ?? "",
+      coaches: g.coaches ?? [],
+      schedule: g.schedule ?? [],
+      maxMembers: g.maxMembers ?? 0,
+      membershipOpen: g.membershipOpen ?? true,
+      payment: g.payment ?? {
         amount: 0,
         billingCycle: "Dönemlik",
         includesEquipment: false,
       },
-      notes: newGroup.notes,
-    };
-    addGroup(createdGroup);
-
-    isCreating = false;
-    closeNew();
+      notes: g.notes ?? undefined,
+    }));
   }
 
-  let searchTerm = "";
+  // Re-normalize groups when data changes (after invalidateAll)
+  $: GroupData = normalizeGroups(data.groups);
+  $: coaches = data.coaches;
 
-  $: filteredGroups = $groupsStore.filter((g) => {
-    if (!searchTerm.trim()) return true;
-    const search = searchTerm.toLowerCase();
-    return (
-      g.name.toLowerCase().includes(search) ||
-      g.description.toLowerCase().includes(search) ||
-      (g.notes || "").toLowerCase().includes(search)
-    );
-  });
+  // filtre panelini göster/gizle
+  let showFilters = false;
+
+  let modals = {
+    new: false,
+  };
+  let newGroup: Partial<GroupType> = {};
+  let isCreating = false;
+
+  function openNew() {
+    newGroup = {
+      membershipOpen: true,
+      payment: {
+        amount: 0,
+        billingCycle: "Dönemlik",
+        includesEquipment: false,
+      },
+    };
+    modals.new = true;
+  }
+
+  function closeNew() {
+    modals.new = false;
+    newGroup = {};
+  }
+
+  async function handleCreateGroup() {
+    isCreating = true;
+
+    try {
+      const result = await GroupService.createGroup(newGroup);
+
+      if (result.success) {
+        addToast({
+          message: result.message || "Grup başarıyla oluşturuldu!",
+          type: "success",
+        });
+
+        // Refresh the page data to get updated group list
+        await invalidateAll();
+        closeNew();
+      } else {
+        result.errors?.forEach((error) => {
+          addToast({
+            message: error,
+            type: "danger",
+          });
+        });
+      }
+    } catch (error) {
+      console.error("Group creation error:", error);
+      addToast({
+        message: "Grup oluşturulurken bir hata oluştu!",
+        type: "danger",
+      });
+    } finally {
+      isCreating = false;
+    }
+  }
+
+  // seçili filtreler
+  let filters = {
+    searchTerm: "" as string,
+    coaches: [] as string[],
+  };
+
+  // istatistikler
+  $: activeFilterCount = Object.entries(filters).reduce(
+    (sum, [key, value]) => {
+      if (key === "searchTerm") {
+        return sum + ((value as string).trim() ? 1 : 0);
+      } else {
+        return sum + (value as string[]).length;
+      }
+    },
+    0
+  );
+  $: hasActiveFilters = activeFilterCount > 0;
+  $: totalGroups = GroupData.length;
+
+  // filtrelenmiş gruplar
+  $: filteredGroups = GroupData.filter((g: GroupType) => {
+    // Search term filtresi - kelime kelime arama (OR mantığı)
+    const searchWords = filters.searchTerm
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0);
+    const matchSearch =
+      searchWords.length === 0 ||
+      searchWords.some((word) => {
+        const name = (g.name || "").toLowerCase();
+        const description = (g.description || "").toLowerCase();
+        const notes = (g.notes || "").toLowerCase();
+
+        return (
+          name.includes(word) ||
+          description.includes(word) ||
+          notes.includes(word)
+        );
+      });
+
+    const matchCoach =
+      !filters.coaches.length ||
+      g.coaches.some((coachId) => filters.coaches.includes(coachId));
+
+    return matchSearch && matchCoach;
+  })
+    // Varsayılan sıralama: oluşturulma tarihine göre en yeni en üstte
+    .sort((a: GroupType, b: GroupType) => {
+      // Eğer API'den oluşturulma tarihi geliyorsa bu kısım güncellenecek
+      return 0;
+    });
+
+  $: filteredCount = filteredGroups.length;
 </script>
 
 <DefaultLayout user={data.user}>
@@ -104,7 +186,16 @@
         </CardHeader>
         <CardBody class="pt-0">
           <!-- Filtreler -->
-          <GroupFilters bind:searchTerm />
+          <GroupFilters
+            bind:showFilters
+            bind:filters
+            {GroupData}
+            {coaches}
+            {activeFilterCount}
+            {hasActiveFilters}
+            {filteredCount}
+            {totalGroups}
+          />
 
           <!-- Tablo -->
           <GroupTable {filteredGroups} />
@@ -115,9 +206,9 @@
 
   <!-- Modal'lar -->
   <GroupNewModal
-    isOpen={showNewModal}
+    isOpen={modals.new}
     bind:newGroup
-    coaches={$coachesStore}
+    {coaches}
     {isCreating}
     on:close={closeNew}
     on:create={handleCreateGroup}
