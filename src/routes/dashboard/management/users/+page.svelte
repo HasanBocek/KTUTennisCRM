@@ -28,15 +28,16 @@
   import { invalidateAll } from "$app/navigation";
   export let data: {
     user: MeType;
-    users: any[];
+    users: UserType[];
   };
 
   function toDate(value: unknown): Date {
     return value ? new Date(value as string) : new Date(0);
   }
 
+  export let resetValidation = () => {};
   // Normalize API users to local UserType shape
-  function normalizeUsers(users: any[]): UserType[] {
+  function normalizeUsers(users: UserType[]): UserType[] {
     return users.map((u: any) => ({
       _id: u._id ?? u.id,
       firstName: u.firstName ?? "",
@@ -54,8 +55,6 @@
       roles: Array.isArray(u.roles) ? u.roles : [],
       studentNumber: u.studentNumber ?? undefined,
       isStudent: Boolean(u.isStudent),
-      department: u.department ?? undefined,
-      grade: u.grade ?? undefined,
       createdAt: toDate(u.createdAt),
       lastLoginAt: toDate(u.lastLoginAt),
       skillLevel:
@@ -166,7 +165,7 @@
 
     const result = await UserService.updateUser(
       selectedUser._id,
-      selectedUser,
+      selectedUser
     );
 
     if (result.success) {
@@ -249,9 +248,7 @@
       return;
     }
 
-    const result = await UserService.deleteUser(
-      selectedUser._id
-    );
+    const result = await UserService.deleteUser(selectedUser._id);
 
     if (result.success) {
       addToast({
@@ -291,7 +288,7 @@
 
     const result = await UserService.createUser({
       ...newUser,
-      roles: newUser.roles ?? ['member']
+      roles: newUser.roles ?? ["member"],
     });
 
     if (result.success) {
@@ -301,15 +298,17 @@
       });
       // Refresh the page data to get updated user list
       await invalidateAll();
+      resetValidation();
+
       closeNew();
     } else {
-      result.errors?.forEach(error => {
-          addToast({
-            message: error,
-            type: "danger"
-          });
+      result.errors?.forEach((error) => {
+        addToast({
+          message: error,
+          type: "danger",
         });
-      console.error('User creation error:', result);
+      });
+      console.error("User creation error:", result);
     }
 
     isCreating = false;
@@ -318,8 +317,6 @@
   // seçili filtreler
   let filters = {
     searchTerm: "" as string,
-    classes: [] as string[],
-    departments: [] as string[],
     genders: [] as string[],
     levels: [] as string[],
     roles: [] as string[],
@@ -361,23 +358,15 @@
           u.studentNumber?.toString() || ""
         ).toLowerCase();
         const phone = (u.phoneNumber || "").toLowerCase();
-        const department = (u.department || "").toLowerCase();
 
         return (
           fullName.includes(word) ||
           email.includes(word) ||
           studentNumber.includes(word) ||
-          phone.includes(word) ||
-          department.includes(word)
+          phone.includes(word)
         );
       });
 
-    const matchClass =
-      !filters.classes.length ||
-      filters.classes.includes(u.grade || "");
-    const matchDept =
-      !filters.departments.length ||
-      filters.departments.includes(u.department || "");
     const matchGender =
       !filters.genders.length ||
       filters.genders.includes(u.isMale == "1" ? "Erkek" : "Kadın");
@@ -398,8 +387,6 @@
         ));
     return (
       matchSearch &&
-      matchClass &&
-      matchDept &&
       matchGender &&
       matchLevel &&
       matchRole &&

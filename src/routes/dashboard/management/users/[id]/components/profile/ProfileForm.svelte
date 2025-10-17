@@ -7,11 +7,10 @@
     Badge
   } from "@sveltestrap/sveltestrap";
   import type { UserType } from "$lib/types/types";
-  import { GRADES, GENDERS } from "$lib/helpers/constants";
+  import { GENDERS } from "$lib/helpers/constants";
   import { ROLES } from "$lib/types/role";
   import RoleBadge from "$lib/components/RoleBadge.svelte";
   import LoadingSpinner from "$lib/components/LoadingSpinner.svelte";
-  import departments from "$lib/assets/departments.json";
   import { validateUserProfile } from "$lib/utils/validation";
 
   export let user: UserType;
@@ -119,41 +118,6 @@
       {/each}
     </Input>
   </Col>
-
-  {#if effectiveIsStudent}
-    <Col md="6">
-      <label class="form-label" for="profile-department">
-        <i class="fas fa-graduation-cap me-1"></i>Bölüm *
-      </label>
-      <Input
-        id="profile-department"
-        type="select"
-        bind:value={editableUser.department}
-        required
-      >
-        <option value="">Seçiniz...</option>
-        {#each Object.entries(departments) as [code, name]}
-          <option value={code}>{name}</option>
-        {/each}
-      </Input>
-    </Col>
-    <Col md="6">
-      <label class="form-label" for="profile-grade">
-        <i class="fas fa-layer-group me-1"></i>Sınıf *
-      </label>
-      <Input
-        id="profile-grade"
-        type="select"
-        bind:value={editableUser.grade}
-        required
-      >
-        <option value="">Seçiniz...</option>
-        {#each GRADES as grade}
-          <option value={grade}>{grade}</option>
-        {/each}
-      </Input>
-    </Col>
-  {/if}
 
   <Col md="6">
     <label class="form-label" for="profile-skillLevel">

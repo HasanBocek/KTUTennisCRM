@@ -150,8 +150,6 @@ export type UserType = {
   roles?: string[];
   studentNumber?: number;
   isStudent?: boolean;
-  department?: string;
-  grade?: string;
   groupMemberships?: GroupMembershipType[];
   createdAt?: Date;
   lastLoginAt?: Date;

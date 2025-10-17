@@ -11,7 +11,7 @@
     <div class="container-xxl">
         <Row>
             <Col xs="12">
-                <Card class="mb-0 rounded-bottom-0">
+                <Card class="mb-2 rounded shadow-sm">
                     <CardBody>
                         <p class="text-muted mb-0">
                             ©

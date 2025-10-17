@@ -18,6 +18,8 @@ export const load: PageServerLoad = async ({
   // Fetch users using the new API utility
   const usersResult = await apiGet('/user/', { accessToken });
 
+  console.log(usersResult.data[1].memberships);
+
   // Return data based on API response
   return {
     user: locals.user,

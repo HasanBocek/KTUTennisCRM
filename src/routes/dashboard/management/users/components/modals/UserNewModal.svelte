@@ -15,7 +15,6 @@
   import type { UserType } from "$lib/types/types";
   import RoleBadge from "$lib/components/RoleBadge.svelte";
   import { createEventDispatcher } from "svelte";
-  import departments from '$lib/assets/departments.json';
 
   export let isOpen: boolean;
   export let newUser: Partial<UserType> = {};
@@ -39,29 +38,17 @@
     "9",
     "10",
   ];
-  const allowedGrades = [
-    "Hazırlık",
-    "1. Sınıf",
-    "2. Sınıf",
-    "3. Sınıf",
-    "4. Sınıf",
-    "5. Sınıf",
-    "6. Sınıf",
-    "6+ Sınıf",
-    "Mezun",
-  ];
 
-  // Set default isStudent to true if not defined
-  if (newUser.isStudent === undefined) newUser.isStudent = true;
+  // Set default isStudent to false if no student number
+  $: newUser.isStudent = !!newUser.studentNumber;
 
   // Ensure isStudent is always a boolean
-  $: effectiveIsStudent = newUser.isStudent === true;
-  $: firstNameValid = nameRegex.test(
-    (newUser.firstName ?? "").toString().trim()
-  ) && (newUser.firstName ?? "").toString().trim().length > 0;
-  $: lastNameValid = nameRegex.test(
-    (newUser.lastName ?? "").toString().trim()
-  ) && (newUser.lastName ?? "").toString().trim().length > 0;
+  $: firstNameValid =
+    nameRegex.test((newUser.firstName ?? "").toString().trim()) &&
+    (newUser.firstName ?? "").toString().trim().length > 0;
+  $: lastNameValid =
+    nameRegex.test((newUser.lastName ?? "").toString().trim()) &&
+    (newUser.lastName ?? "").toString().trim().length > 0;
   $: isMaleValid = newUser.isMale === "1" || newUser.isMale === "0";
   $: phoneValid = e164Regex.test(
     (newUser.phoneNumber ?? "").toString().trim()
@@ -69,20 +56,20 @@
   $: skillLevelValid = allowedSkillLevels.includes(
     (newUser.skillLevel ?? "").toString()
   );
-  $: studentNumberValid = effectiveIsStudent
+  $: studentNumberValid = newUser.isStudent
     ? /^\d{6}$/.test((newUser.studentNumber ?? "").toString().trim())
     : true;
-  $: departmentValid = effectiveIsStudent
-    ? Object.keys(departments).includes(newUser.department ?? "")
-    : true;
-  $: gradeValid = effectiveIsStudent
-    ? allowedGrades.includes((newUser.grade ?? "").toString())
-    : true;
+  // Compute email placeholder based on student number
+  $: emailPlaceholder = newUser.studentNumber 
+    ? `${newUser.studentNumber}@ogr.ktu.edu.tr` 
+    : 'ogrenci@ogr.ktu.edu.tr';
+
+  // Remove the previous reactive block that was setting email value
   $: emailStr = (newUser.email ?? "").toString().trim();
   $: emailProvided = emailStr.length > 0;
   $: emailFormatValid =
     !emailProvided || /[^\s@]+@[^\s@]+\.[^\s@]+/.test(emailStr);
-  $: emailValid = !effectiveIsStudent
+  $: emailValid = !newUser.isStudent
     ? emailProvided && emailFormatValid
     : true;
   $: formValid =
@@ -92,8 +79,6 @@
     phoneValid &&
     skillLevelValid &&
     studentNumberValid &&
-    departmentValid &&
-    gradeValid &&
     emailValid;
 
   const dispatch = createEventDispatcher();
@@ -107,44 +92,34 @@
   function onSubmit(e: Event) {
     e.preventDefault();
     validated = true;
-    
-    console.log('Form Validation:', {
+
+    if(newUser.email === "") {
+      delete newUser.email;
+    }
+
+    console.log("Form Validation:", {
       firstNameValid,
       lastNameValid,
       isMaleValid,
       phoneValid,
       skillLevelValid,
       studentNumberValid,
-      departmentValid,
-      gradeValid,
       emailValid,
-      formValid
+      formValid,
     });
 
-    console.log('New User Data:', newUser);
+    console.log("New User Data:", newUser);
 
     if (formValid) {
       submit();
+      
     } else {
-      console.error('Form validation failed');
+      console.error("Form validation failed");
     }
   }
 
-  function resetValidation() {
+ export function resetValidation() {
     if (validated) validated = false;
-  }
-
-  function onIsStudentChange(e: Event) {
-    const target = e.currentTarget as HTMLSelectElement;
-    const isStudent = target.value === 'true';
-    
-    newUser.isStudent = isStudent;
-    if (!isStudent) {
-      newUser.studentNumber = undefined;
-      newUser.department = undefined;
-      newUser.grade = undefined;
-    }
-    resetValidation();
   }
 
   function handleNewRoleChange(roleId: string, event: Event) {
@@ -228,7 +203,7 @@
           for="new-email-md"
         >
           <i class="fas fa-envelope me-1"
-          ></i>E-posta{#if !effectiveIsStudent}
+          ></i>E-posta{#if !newUser.isStudent}
             *{/if}
         </label>
         <InputGroup class="mb-2">
@@ -236,9 +211,10 @@
             id="new-email-md"
             type="email"
             bind:value={newUser.email}
-            required={!effectiveIsStudent}
+            placeholder={newUser.isStudent ? emailPlaceholder : ""}
+            required={!newUser.isStudent}
             invalid={validated && !emailValid}
-            feedback={effectiveIsStudent
+            feedback={newUser.isStudent
               ? "Geçerli bir e-posta adresi girin"
               : "E-posta gereklidir ve geçerli olmalıdır"}
             on:input={resetValidation}
@@ -302,6 +278,21 @@
           {/each}
         </Input>
       </Col>
+
+      <Col md="6">
+        <label class="form-label" for="new-studentNumber"
+          ><i class="fas fa-id-card me-1"></i>Öğrenci No</label
+        >
+        <Input
+          id="new-studentNumber"
+          type="text"
+          bind:value={newUser.studentNumber}
+          invalid={validated && !studentNumberValid}
+          feedback="Öğrenci numarası 6 rakam olmalıdır"
+          inputmode="numeric"
+          on:input={resetValidation}
+        />
+      </Col>
       <Col md="6">
         <label class="form-label" for="new-isStudent">
           <i class="fas fa-user-graduate me-1"></i>Öğrenci mi?
@@ -309,70 +300,14 @@
         <Input
           id="new-isStudent"
           type="select"
-          value={newUser.isStudent === true ? 'true' : 'false'}
-          on:change={onIsStudentChange}
+          class="text-muted"
+          value={newUser.isStudent ? "true" : "false"}
+          disabled
         >
           <option value="true">Evet</option>
           <option value="false">Hayır</option>
         </Input>
       </Col>
-      {#if effectiveIsStudent}
-        <Col md="6">
-          <label class="form-label" for="new-studentNumber"
-            ><i class="fas fa-id-card me-1"></i>Öğrenci No *</label
-          >
-          <Input
-            id="new-studentNumber"
-            type="text"
-            bind:value={newUser.studentNumber}
-            required
-            invalid={validated && !studentNumberValid}
-            feedback="Öğrenci numarası 6 rakam olmalıdır"
-            inputmode="numeric"
-            on:input={resetValidation}
-          />
-        </Col>
-      {/if}
-      {#if effectiveIsStudent}
-        <Col md="6">
-          <label class="form-label" for="new-department"
-            ><i class="fas fa-graduation-cap me-1"></i>Bölüm *</label
-          >
-          <Input
-            id="new-department"
-            type="select"
-            bind:value={newUser.department}
-            required
-            invalid={validated && !departmentValid}
-            feedback="Bölüm seçiniz"
-            on:change={resetValidation}
-          >
-            <option value="">Seçiniz...</option>
-            {#each Object.entries(departments) as [code, name]}
-              <option value={code}>{name}</option>
-            {/each}
-          </Input>
-        </Col>
-        <Col md="6">
-          <label class="form-label" for="new-grade"
-            ><i class="fas fa-layer-group me-1"></i>Sınıf *</label
-          >
-          <Input
-            id="new-grade"
-            type="select"
-            bind:value={newUser.grade}
-            required
-            invalid={validated && !gradeValid}
-            feedback="Sınıf seçiniz"
-            on:change={resetValidation}
-          >
-            <option value="">Seçiniz...</option>
-            {#each allowedGrades as g}
-              <option value={g}>{g}</option>
-            {/each}
-          </Input>
-        </Col>
-      {/if}
 
       <Col md="12">
         <label for="new-roles" class="form-label"

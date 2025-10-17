@@ -11,12 +11,9 @@
     Form,
   } from "@sveltestrap/sveltestrap";
   import {
-    DEPARTMENTS,
-    GRADES,
     GENDERS,
   } from "$lib/helpers/constants";
   import type { MeType } from "$lib/types/types";
-  import departments from "$lib/assets/departments.json";
   import { ProfileService } from "$lib/services/profile/profileService";
   import SettingCard from "$lib/components/SettingCard.svelte";
   import { invalidateAll } from "$app/navigation";
@@ -47,23 +44,12 @@
     Number(editableUser?.skillLevel ?? NaN)
   );
   
-  // Improved department validation
-  $: departmentValid = !effectiveIsStudent || 
-    (editableUser.department && 
-     Object.keys(departments).includes(editableUser.department));
-  
-  $: gradeValid = effectiveIsStudent
-    ? GRADES.includes((editableUser?.grade ?? "").toString())
-    : (editableUser?.grade ?? "") === "";
-  
   $: formValid =
     firstNameValid &&
     lastNameValid &&
     isMaleValid &&
     phoneValid &&
-    skillLevelValid &&
-    departmentValid &&
-    gradeValid;
+    skillLevelValid;
 
   function resetValidation() {
     if (validated) validated = false;
@@ -161,47 +147,6 @@
         {/each}
       </Input>
     </Col>
-    {#if effectiveIsStudent}
-      <Col md="6">
-        <label class="form-label" for="profile-department"
-          ><i class="fas fa-graduation-cap me-1"></i>Bölüm *</label
-        >
-        <Input
-          id="profile-department"
-          type="select"
-          bind:value={editableUser.department}
-          required
-          invalid={validated && !departmentValid}
-          feedback="Bölüm seçiniz"
-          on:change={resetValidation}
-        >
-          <option value="">Seçiniz...</option>
-          {#each Object.entries(departments) as [code, name]}
-            <option value={code}>{name}</option>
-          {/each}
-        </Input>
-      </Col>
-      <Col md="6">
-        <label class="form-label" for="profile-grade"
-          ><i class="fas fa-layer-group me-1"></i>Sınıf *</label
-        >
-        <Input
-          id="profile-grade"
-          type="select"
-          bind:value={editableUser.grade}
-          required
-          invalid={validated && !gradeValid}
-          feedback="Sınıf seçiniz"
-          on:change={resetValidation}
-        >
-          <option value="">Seçiniz...</option>
-          {#each GRADES as grade}
-            <option value={grade}>{grade}</option>
-          {/each}
-        </Input>
-      </Col>
-    {/if}
-
     <Col md="6">
       <label class="form-label" for="profile-skillLevel"
         ><i class="fas fa-tennis-ball me-1"></i>Tenis Seviyesi *</label

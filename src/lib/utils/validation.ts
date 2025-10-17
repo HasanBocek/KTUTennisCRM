@@ -1,6 +1,5 @@
 import type { UserType } from "$lib/types/types";
-import { GRADES, GENDERS } from "$lib/helpers/constants";
-import departments from "$lib/assets/departments.json";
+import { GENDERS } from "$lib/helpers/constants"; 
 import { ROLES } from "$lib/types/role";
 
 export const validationPatterns = {
@@ -46,16 +45,6 @@ export function validateUserProfile(user: UserType): ValidationResult {
 
   // Student-specific Validations
   if (isStudent) {
-    // Department Validation
-    if (!Object.keys(departments).includes(user.department ?? "")) {
-      errors.push("Bölüm seçiniz");
-    }
-
-    // Grade Validation
-    if (!GRADES.includes((user.grade ?? "").toString())) {
-      errors.push("Sınıf seçiniz");
-    }
-
     // Student Number Validation
     if (user.studentNumber && Number(user.studentNumber) <= 0) {
       errors.push("Geçerli bir öğrenci numarası girin");

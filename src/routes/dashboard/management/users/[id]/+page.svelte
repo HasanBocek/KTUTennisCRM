@@ -6,9 +6,10 @@
   import UserTabs from "./components/UserTabs.svelte";
   import UserNotFound from "./components/UserNotFound.svelte";
   import { usersStore } from "$lib/stores/usersStore";
-  import type { MeType, UserType } from "$lib/types/types";
+  import type { MeType, SessionType, UserType } from "$lib/types/types";
   export let data: {
     user: MeType;
+    sessions: SessionType[];
     targetUser: UserType;
   };
 
@@ -27,12 +28,12 @@
     </Row>
   {:else}
     <Row class="justify-content-center">
-      <UserInfo user={targetUser} />
+      <UserInfo user={targetUser} sessionsData={data.sessions} />
     </Row>
 
     <Row class="justify-content-center">
       <UserDetails user={targetUser} />
-      <UserTabs user={targetUser} />
+      <UserTabs user={targetUser} sessionsData={data.sessions} />
     </Row>
   {/if}
 </DefaultLayout>

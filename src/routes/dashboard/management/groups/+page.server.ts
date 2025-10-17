@@ -16,19 +16,14 @@ export const load: PageServerLoad = async ({
   // Fetch groups
   const groupsResult = await apiGet('/group/', { accessToken });
 
-  // Fetch users (to get coaches)
-  const usersResult = await apiGet('/user/', { accessToken });
 
   // Return data based on API responses
   return {
     user,
+    accessToken,
     groups: groupsResult.success ? groupsResult.data ?? [] : [],
-    coaches: usersResult.success 
-      ? (usersResult.data?.filter((user: any) => user.role === "coach") ?? [])
-      : [],
     errors: [
-      ...(groupsResult.errors || []),
-      ...(usersResult.errors || [])
+      ...(groupsResult.errors || [])
     ]
   };
 };

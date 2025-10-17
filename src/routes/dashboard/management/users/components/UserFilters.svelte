@@ -14,8 +14,6 @@
   export let showFilters: boolean = false;
   export let filters: {
     searchTerm: string;
-    classes: string[];
-    departments: string[];
     genders: string[];
     levels: string[];
     roles: string[];
@@ -29,22 +27,6 @@
   export let filteredCount: number;
   export let totalUsers: number;
 
-  // sabit sınıf seçenekleri
-  const classes: string[] = [
-    "Hazırlık",
-    "1. Sınıf",
-    "2. Sınıf",
-    "3. Sınıf",
-    "4. Sınıf",
-    "5. Sınıf",
-    "6. Sınıf",
-    "+6. Sınıf",
-  ];
-
-  // veri tabanlı seçenekler
-  $: departments = Array.from(
-    new Set(UserData.map((u) => u.department || ""))
-  ).filter(Boolean);
   $: genders = Array.from(
     new Set(
       UserData.map((u) => (u.isMale == "1" ? "Erkek" : "Kadın"))
@@ -83,8 +65,6 @@
   function onClearFilters() {
     filters = {
       searchTerm: "",
-      classes: [],
-      departments: [],
       genders: [],
       levels: [],
       roles: [],
@@ -192,8 +172,47 @@
                     </div>
                   </Col>
 
-                  <!-- Tenis Seviyesi -->
+                  <!-- Roller -->
                   <Col md="2">
+                    <label
+                      class="form-label small mb-2"
+                      for="filter-roles"
+                      ><strong>Roller</strong
+                      >{#if filters.roles.length}<Badge
+                          color="primary"
+                          class="ms-1">{filters.roles.length}</Badge
+                        >{/if}</label
+                    >
+                    <div
+                      id="filter-roles"
+                      class="border rounded p-2"
+                      style="max-height:150px;overflow-y:auto;"
+                    >
+                      {#each roles as role}
+                        <div class="form-check form-check-sm">
+                          <input
+                            id="role-{role.id}"
+                            type="checkbox"
+                            class="form-check-input"
+                            checked={filters.roles.includes(role.id)}
+                            on:change={() =>
+                              toggleFilter("roles", role.id)}
+                          />
+                          <label
+                            for="role-{role.id}"
+                            class="form-check-label small d-flex align-items-center"
+                          >
+                            <span style="color: {role.color};"
+                              >{role.name}</span
+                            >
+                          </label>
+                        </div>
+                      {/each}
+                    </div>
+                  </Col>
+                  
+                  <!-- Tenis Seviyesi -->
+                  <Col md="5">
                     <label
                       class="form-label small mb-2"
                       for="filter-levels"
@@ -205,11 +224,11 @@
                     >
                     <div
                       id="filter-levels"
-                      class="border rounded p-2"
+                      class="border rounded p-2 d-flex flex-wrap gap-2"
                       style="max-height:150px;overflow-y:auto;"
                     >
                       {#each levels as lvl}
-                        <div class="form-check form-check-sm">
+                        <div class="form-check form-check-sm m-0">
                           <input
                             id="lvl-{lvl}"
                             type="checkbox"
@@ -222,42 +241,6 @@
                             for="lvl-{lvl}"
                             class="form-check-label small"
                             >{lvl}</label
-                          >
-                        </div>
-                      {/each}
-                    </div>
-                  </Col>
-
-                  <!-- Sınıf -->
-                  <Col md="2">
-                    <label
-                      class="form-label small mb-2"
-                      for="filter-classes"
-                      ><strong>Sınıf</strong
-                      >{#if filters.classes.length}<Badge
-                          color="primary"
-                          class="ms-1">{filters.classes.length}</Badge
-                        >{/if}</label
-                    >
-                    <div
-                      id="filter-classes"
-                      class="border rounded p-2"
-                      style="max-height:150px;overflow-y:auto;"
-                    >
-                      {#each classes as cls}
-                        <div class="form-check form-check-sm">
-                          <input
-                            id="class-{cls}"
-                            type="checkbox"
-                            class="form-check-input"
-                            checked={filters.classes.includes(cls)}
-                            on:change={() =>
-                              toggleFilter("classes", cls)}
-                          />
-                          <label
-                            for="class-{cls}"
-                            class="form-check-label small"
-                            >{cls}</label
                           >
                         </div>
                       {/each}
@@ -295,45 +278,6 @@
                             class="form-check-label small"
                             >{gend}</label
                           >
-                        </div>
-                      {/each}
-                    </div>
-                  </Col>
-
-                  <!-- Roller -->
-                  <Col md="3">
-                    <label
-                      class="form-label small mb-2"
-                      for="filter-roles"
-                      ><strong>Roller</strong
-                      >{#if filters.roles.length}<Badge
-                          color="primary"
-                          class="ms-1">{filters.roles.length}</Badge
-                        >{/if}</label
-                    >
-                    <div
-                      id="filter-roles"
-                      class="border rounded p-2"
-                      style="max-height:150px;overflow-y:auto;"
-                    >
-                      {#each roles as role}
-                        <div class="form-check form-check-sm">
-                          <input
-                            id="role-{role.id}"
-                            type="checkbox"
-                            class="form-check-input"
-                            checked={filters.roles.includes(role.id)}
-                            on:change={() =>
-                              toggleFilter("roles", role.id)}
-                          />
-                          <label
-                            for="role-{role.id}"
-                            class="form-check-label small d-flex align-items-center"
-                          >
-                            <span style="color: {role.color};"
-                              >{role.name}</span
-                            >
-                          </label>
                         </div>
                       {/each}
                     </div>

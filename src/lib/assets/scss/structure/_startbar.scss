@@ -7,6 +7,8 @@
     background-color: var(--#{$prefix}startbar-bg);
     transition: 0.17s;
     z-index: 1005;
+    margin:  0.75rem;
+    border-radius: 0.75rem;
     box-shadow: $card-box-shadow;
 
     .brand {
@@ -23,6 +25,7 @@
         margin-bottom: 20px;
         .logo-sm {
             height: 36px;
+            transition: 0.17s;
         }
         .logo-lg {
             transition: 0.17s;
@@ -473,3 +476,11 @@ html[data-bs-theme="dark"] {
         }
     }
 }
+
+@media (max-width: 1024px) {
+
+        .startbar {
+            margin: 0px;
+            border-radius: 0px;
+        }
+    }

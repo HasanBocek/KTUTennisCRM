@@ -6,10 +6,8 @@
   import GroupTabs from "./components/GroupTabs.svelte";
   import GroupNotFound from "./components/GroupNotFound.svelte";
   import {
-    initializeGroups,
     groupsStore,
   } from "$lib/stores/groupsStore";
-  import { GroupData } from "$lib/assets/data/mock/data";
   import { goto } from "$app/navigation";
   import type { MeType, GroupType } from "$lib/types/types";
   export let data: {
@@ -18,13 +16,6 @@
     group: GroupType;
   };
 
-  // Initialize groups store
-  initializeGroups(GroupData);
-
-  // Get group reactively from store instead of static data
-  $: data.group =
-    $groupsStore.find((g) => g._id === data.id) ||
-    data.group;
   function handleBackToGroups() {
     goto("/dashboard/management/groups");
   }

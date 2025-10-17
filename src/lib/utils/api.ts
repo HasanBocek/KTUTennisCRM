@@ -1,5 +1,28 @@
 import { env } from "$env/dynamic/public";
 
+// Enum for HTTP methods to provide type safety
+export enum HttpMethod {
+  GET = 'GET',
+  POST = 'POST',
+  PATCH = 'PATCH',
+  PUT = 'PUT',
+  DELETE = 'DELETE'
+}
+
+// Enhanced error types
+export class ApiError extends Error {
+  public readonly statusCode?: number;
+  public readonly errors?: string[];
+
+  constructor(message: string, statusCode?: number, errors?: string[]) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.errors = errors;
+  }
+}
+
+// Improved API response interface
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -7,63 +30,69 @@ export interface ApiResponse<T = any> {
   errors?: string[];
 }
 
+// Configuration interface for API requests
+interface ApiRequestConfig {
+  timeout?: number;
+  includeCredentials?: boolean;
+  headers?: Record<string, string>;
+  accessToken?: string | null;
+}
+
+// Central API request function with improved error handling
 export async function apiRequest<T = any>(
   endpoint: string, 
   options: {
-    method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+    method?: HttpMethod;
     body?: any;
-    headers?: Record<string, string>;
+    config?: ApiRequestConfig;
   } = {}
 ): Promise<ApiResponse<T>> {
-  try {
-    // Determine access token
-    const accessToken = 
-      document.cookie
-        .split("; ")
-        .find((row) => row.startsWith("accessToken="))
-        ?.split("=")[1];
+  const {
+    method = HttpMethod.GET, 
+    body,
+    config = {}
+  } = options;
 
-    // Prepare headers
+  const {
+    timeout = 10000,
+    includeCredentials = true,
+    headers: customHeaders = {},
+    accessToken = null
+  } = config;
+
+  try {
+    // Prepare headers with dynamic token
     const headers: Record<string, string> = {
-      ...options.headers,
-      ...(accessToken ? { 
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json' 
-      } : {})
+      'Content-Type': 'application/json',
+      ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
+      ...customHeaders
     };
 
     // Prepare fetch options
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
     const fetchOptions: RequestInit = {
-      method: options.method || 'GET',
+      method,
       headers,
-      ...(options.body ? { 
-        body: JSON.stringify(options.body) 
-      } : {}),
-      credentials: 'include'
+      signal: controller.signal,
+      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(includeCredentials ? { credentials: 'include' } : {})
     };
 
-    // Perform fetch with timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    
-    fetchOptions.signal = controller.signal;
+    // Perform fetch with enhanced error handling
+    const response = await fetch(`${env.PUBLIC_BACKEND_URL}${endpoint}`, fetchOptions);
 
-    // Make the request
-    const response = await fetch(`${env.PUBLIC_BACKEND_URL}${endpoint}`, fetchOptions).catch((error) => {
-      console.error('API Request Error:', error);
-      return {
-        success: false,
-        errors: ['Network Error: Unable to connect to the server']
-      };
-    });
     clearTimeout(timeoutId);
 
-    // Handle network/response errors
+    // Handle HTTP errors
     if (!response.ok) {
-      return {
-        success: false,
-        errors: [`HTTP Error: ${response.status} ${response.statusText}`]
-      };
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        `HTTP Error: ${response.status} ${response.statusText}`, 
+        response.status, 
+        errorData.errors || [`HTTP Error: ${response.status}`]
+      );
     }
 
     // Parse response
@@ -71,11 +100,11 @@ export async function apiRequest<T = any>(
 
     // Check API-level success
     if (data.code !== 200) {
-      return {
-        success: false,
-        message: data.message,
-        errors: data.errors || [`API Error: ${data.message || 'Unknown error'}`]
-      };
+      throw new ApiError(
+        data.message || 'API Error', 
+        data.code, 
+        data.errors || [`API Error: ${data.message || 'Unknown error'}`]
+      );
     }
 
     // Successful response
@@ -86,8 +115,14 @@ export async function apiRequest<T = any>(
     };
 
   } catch (error) {
-    // Handle various error types
-    console.error('API Request Error:', error);
+    // Comprehensive error handling
+    if (error instanceof ApiError) {
+      return {
+        success: false,
+        message: error.message,
+        errors: error.errors
+      };
+    }
 
     if (error instanceof TypeError) {
       return {
@@ -103,6 +138,7 @@ export async function apiRequest<T = any>(
       };
     }
 
+    // Fallback error handling
     return {
       success: false,
       errors: [
@@ -114,15 +150,25 @@ export async function apiRequest<T = any>(
   }
 }
 
-// Convenience methods for different HTTP methods
-export const apiGet = <T = any>(endpoint: string, options: Omit<Parameters<typeof apiRequest>[1], 'method'> = {}) => 
-  apiRequest<T>(endpoint, { ...options, method: 'GET' });
+// Convenience methods for different HTTP methods with improved typing
+export const apiGet = <T = any>(
+  endpoint: string, 
+  config: Omit<ApiRequestConfig, 'method'> = {}
+) => apiRequest<T>(endpoint, { method: HttpMethod.GET, config });
 
-export const apiPost = <T = any>(endpoint: string, body: any, options: Omit<Parameters<typeof apiRequest>[1], 'method' | 'body'> = {}) => 
-  apiRequest<T>(endpoint, { ...options, method: 'POST', body });
+export const apiPost = <T = any>(
+  endpoint: string, 
+  body: any, 
+  config: Omit<ApiRequestConfig, 'method' | 'body'> = {}
+) => apiRequest<T>(endpoint, { method: HttpMethod.POST, body, config });
 
-export const apiPatch = <T = any>(endpoint: string, body: any, options: Omit<Parameters<typeof apiRequest>[1], 'method' | 'body'> = {}) => 
-  apiRequest<T>(endpoint, { ...options, method: 'PATCH', body });
+export const apiPatch = <T = any>(
+  endpoint: string, 
+  body: any, 
+  config: Omit<ApiRequestConfig, 'method' | 'body'> = {}
+) => apiRequest<T>(endpoint, { method: HttpMethod.PATCH, body, config });
 
-export const apiDelete = <T = any>(endpoint: string, options: Omit<Parameters<typeof apiRequest>[1], 'method'> = {}) => 
-  apiRequest<T>(endpoint, { ...options, method: 'DELETE' });
+export const apiDelete = <T = any>(
+  endpoint: string, 
+  config: Omit<ApiRequestConfig, 'method'> = {}
+) => apiRequest<T>(endpoint, { method: HttpMethod.DELETE, config });

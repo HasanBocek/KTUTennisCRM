@@ -81,7 +81,7 @@
 
 <div class="page-wrapper">
   <div class="page-content">
-    <div class="container-xxl">
+    <div class="mb-3 container-xxl">
       <slot />
     </div>
 

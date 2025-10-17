@@ -39,6 +39,7 @@
         .filter((role) => role !== undefined)
         .sort((a, b) => (b?.level || 0) - (a?.level || 0))
     : [];
+
 </script>
 
 <Modal {isOpen} toggle={close} centered scrollable>
@@ -110,17 +111,7 @@
             ? "Erkek"
             : "Kadın"}
         </li>
-        <li class="mt-2">
-          <i
-            class="las la-graduation-cap me-2 text-secondary fs-22 align-middle"
-          ></i>
-          <b> Bölüm</b>: {selectedUser.department || "Veri Yok"}
-        </li>
-        <li class="mt-2">
-          <i
-            class="las la-layer-group me-2 text-secondary fs-22 align-middle"
-          ></i> <b> Sınıf </b> : {selectedUser.grade || "Veri Yok"}
-        </li>
+        
         <li class="mt-2">
           <i
             class="las la-trophy text-secondary fs-22 align-middle me-2"

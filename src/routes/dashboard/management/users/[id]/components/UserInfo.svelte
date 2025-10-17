@@ -1,11 +1,12 @@
 <script lang="ts">
   import { Card, CardBody, Col, Row } from "@sveltestrap/sveltestrap";
-  import type { UserType } from "$lib/types/types";
-  import { SessionData } from "$lib/assets/data/mock/data";
+  import type { UserType, SessionType } from "$lib/types/types";
   import { onMount, onDestroy } from "svelte";
 
   export let user: UserType;
+  export let sessionsData: SessionType[];
 
+  let SessionData = [...sessionsData];
   // Force reactivity trigger
   let updateTrigger = 0;
 

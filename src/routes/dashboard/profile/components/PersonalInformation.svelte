@@ -14,7 +14,6 @@
   import { getRoleById } from "$lib/types/role";
   import type { RoleType } from "$lib/types/role";
   export let user: MeType;
-  import departments from "$lib/assets/departments.json";
   
   // Rolleri seviyeye göre sırala (yüksekten düşüğe)
   $: sortedRoles = user?.roles
@@ -29,10 +28,6 @@
 
   $: memberships = user.memberships || [];
 
-  // Safe department name lookup
-  $: departmentName = user.department 
-    ? departments[user.department as keyof typeof departments] || "Veri Yok"
-    : "Veri Yok";
 
   function getStatusMeta(status: string): {
     label: string;
@@ -135,17 +130,7 @@
           ></i>
           <b> Cinsiyet</b>: {user.isMale == "1" ? "Erkek" : "Kadın"}
         </li>
-        <li class="mt-2">
-          <i
-            class="las la-graduation-cap me-2 text-secondary fs-22 align-middle"
-          ></i>
-          <b> Bölüm</b>: {departmentName}
-        </li>
-        <li class="mt-2">
-          <i
-            class="las la-layer-group me-2 text-secondary fs-22 align-middle"
-          ></i> <b> Sınıf</b>: {user.grade || "Veri Yok"}
-        </li>
+        
         <li class="mt-2">
           <i
             class="las la-trophy text-secondary fs-22 align-middle me-2"

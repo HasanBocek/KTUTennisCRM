@@ -2,34 +2,21 @@
   import { Badge, Table } from "@sveltestrap/sveltestrap";
   import Pagination from "$lib/components/Pagination.svelte";
   import type { GroupType } from "$lib/types/types";
-  import { UserData } from "$lib/assets/data/mock/data";
 
-  export let filteredGroups: GroupType[];
-
-  // Calculate current members count for each group
-  function getCurrentMembersCount(groupId: string): number {
-    return UserData.filter(user => 
-      user.memberships?.some(membership => 
-        membership.group._id === groupId && membership.status === "active"
-      )
-    ).length;
-  }
+  export let groups: (GroupType)[] = [];
+  export let totalGroups: number;
 
   // Pagination
   let currentPage = 1;
   const itemsPerPage = 10;
 
-  $: totalPages = Math.ceil(filteredGroups.length / itemsPerPage);
+  $: totalPages = Math.ceil(groups.length / itemsPerPage);
   $: startIndex = (currentPage - 1) * itemsPerPage;
   $: endIndex = startIndex + itemsPerPage;
-  $: groups = filteredGroups.map(group => ({
-    ...group,
-    currentMembersCount: getCurrentMembersCount(group._id)
-  }));
   $: paginatedGroups = groups.slice(startIndex, endIndex);
 
-  // Reset to page 1 when filtered groups change
-  $: if (filteredGroups) {
+  // Reset to page 1 when groups change
+  $: if (groups) {
     currentPage = 1;
   }
 
@@ -40,6 +27,8 @@
   }
 
   function formatSchedule(schedule: GroupType["schedule"]): string {
+    if (!schedule || schedule.length === 0) return "Program yok";
+    
     return schedule
       .map((s) => {
         const dayNames: Record<string, string> = {
@@ -96,13 +85,13 @@
         </td>
         <td>
           <div class="d-flex align-items-center gap-2">
-            <span class="fw-medium">{group.currentMembersCount} / {group.maxMembers}</span>
+            <span class="fw-medium">{group.memberships.length} / {group.maxMembers}</span>
             <div class="progress d-none d-md-flex" style="width: 60px; height: 6px;">
               <div
                 class="progress-bar"
                 role="progressbar"
-                style="width: {(group.currentMembersCount / group.maxMembers) * 100}%"
-                aria-valuenow={group.currentMembersCount}
+                style="width: {(group.memberships.length / group.maxMembers) * 100}%"
+                aria-valuenow={group.memberships.length}
                 aria-valuemin="0"
                 aria-valuemax={group.maxMembers}
               ></div>
@@ -137,7 +126,7 @@
   <Pagination
     {currentPage}
     {totalPages}
-    totalItems={filteredGroups.length}
+    totalItems={totalGroups}
     {itemsPerPage}
     on:pageChange={(event) => goToPage(event.detail.page)}
   />

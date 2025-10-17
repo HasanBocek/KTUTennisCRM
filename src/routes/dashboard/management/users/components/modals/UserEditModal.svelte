@@ -14,9 +14,7 @@
   import type { UserType } from "$lib/types/types";
   import { createEventDispatcher } from "svelte";
   import RoleBadge from "$lib/components/RoleBadge.svelte";
-  import departments from '$lib/assets/departments.json';
   import {
-    GRADES,
     GENDERS,
   } from "$lib/helpers/constants";
 
@@ -71,23 +69,14 @@
         (selectedUser?.studentNumber ?? "").toString().trim()
       )
     : true;
-  $: departmentValid = effectiveIsStudent
-    ? Object.values(departments).includes(
-        (selectedUser?.department ?? "").toString()
-      )
-    : (selectedUser?.department ?? "") === "";
-  $: gradeValid = effectiveIsStudent
-    ? GRADES.includes((selectedUser?.grade ?? "").toString())
-    : (selectedUser?.grade ?? "") === "";
+  
   $: formValid =
     firstNameValid &&
     lastNameValid &&
     isMaleValid &&
     phoneValid &&
     skillLevelValid &&
-    studentNumberValid &&
-    departmentValid &&
-    gradeValid;
+    studentNumberValid;
 
   function onSubmit(e: Event) {
     e.preventDefault();
@@ -182,44 +171,6 @@
               on:input={resetValidation}
             />
           </Col>
-          <Col md="6">
-            <label class="form-label" for="edit-department"
-              ><i class="fas fa-graduation-cap me-1"></i>Bölüm *</label
-            >
-            <Input
-              id="edit-department"
-              type="select"
-              bind:value={selectedUser.department}
-              required
-              invalid={validated && !departmentValid}
-              feedback="Bölüm seçiniz"
-              on:change={resetValidation}
-            >
-              <option value="">Seçiniz...</option>
-              {#each Object.entries(departments) as [code, name]}
-                <option value={code}>{name}</option>
-              {/each}
-            </Input>
-          </Col>
-          <Col md="6">
-            <label class="form-label" for="edit-grade"
-              ><i class="fas fa-layer-group me-1"></i>Sınıf *</label
-            >
-            <Input
-              id="edit-grade"
-              type="select"
-              bind:value={selectedUser.grade}
-              required
-              invalid={validated && !gradeValid}
-              feedback="Sınıf seçiniz"
-              on:change={resetValidation}
-            >
-              <option value="">Seçiniz...</option>
-              {#each GRADES as grade}
-                <option value={grade}>{grade}</option>
-              {/each}
-            </Input>
-          </Col>
         {/if}
         <Col md="6">
           <label class="form-label" for="edit-isMale"
@@ -260,30 +211,6 @@
           </Input>
         </Col>
 
-        <Col md="12">
-          <div class="form-label">
-            <i class="fas fa-check-circle me-1"></i>E-posta Doğrulama
-          </div>
-          <div class="form-check form-switch mt-2">
-            <input
-              class="form-check-input"
-              type="checkbox"
-              id="edit-email-verified"
-              checked={selectedUser.isEmailVerified}
-              on:change={(e) =>
-                (selectedUser.isEmailVerified =
-                  e.currentTarget.checked)}
-            />
-            <label
-              class="form-check-label small"
-              for="edit-email-verified"
-            >
-              {selectedUser.isEmailVerified
-                ? "Doğrulanmış"
-                : "Doğrulanmamış"}
-            </label>
-          </div>
-        </Col>
         <Col md="12">
           <div class="form-label">
             <i class="fas fa-user-tag me-1"></i>

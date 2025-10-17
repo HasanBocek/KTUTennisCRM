@@ -13,7 +13,6 @@
   import { addToast } from "$lib/components/ToastNotification.svelte";
   import { RegisterService } from "$lib/services/auth/registerService";
   import type { RegisterCredentials } from "$lib/types/types";
-  import departments from "$lib/assets/departments.json";
 
   const logoSm = '/images/logo-sm.png';
 
@@ -25,8 +24,6 @@
     firstName: '',
     lastName: '',
     studentNumber: '',
-    department: '',
-    grade: '',
     isMale: '',
     phoneNumber: '',
     skillLevel: '',
@@ -46,8 +43,6 @@
     if (!formData.firstName.trim()) errors.push('İsim gereklidir');
     if (!formData.lastName.trim()) errors.push('Soyisim gereklidir');
     if (!formData.studentNumber.trim()) errors.push('Öğrenci numarası gereklidir');
-    if (!formData.department) errors.push('Program kodu seçilmelidir');
-    if (!formData.grade) errors.push('Sınıf seçilmelidir');
     if (!formData.isMale) errors.push('Cinsiyet seçilmelidir');
     if (!formData.phoneNumber.trim()) errors.push('Telefon numarası gereklidir');
     if (!formData.skillLevel) errors.push('Beceri seviyesi seçilmelidir');
@@ -150,46 +145,11 @@
                   bind:value={formData.studentNumber}
                 />
               </Col>
-              <Col sm="6">
-                <label class="form-label" for="department">Program Kodu</label>
-                <Input 
-                  type="select" 
-                  name="department" 
-                  placeholder="Program kodunuzu giriniz" 
-                  id="department"
-                  bind:value={formData.department}
-                >
-                  <option value="">Program kodunuzu seçiniz</option>
-                  {#each Object.entries(departments) as [code, name]}
-                    <option value={code}>{name}</option>
-                  {/each}
-                </Input>
-              </Col>
             </Row>
           </div>
 
           <div class="form-group mb-2">   
             <Row>
-              <Col sm="6" class="mb-2">
-                <label class="form-label" for="grade">Sınıf</label>
-                <Input 
-                  type="select" 
-                  name="grade" 
-                  id="grade"
-                  bind:value={formData.grade}
-                >
-                  <option value="">Sınıfınızı seçiniz</option>
-                  <option value="Hazırlık">Hazırlık</option>
-                  <option value="1. Sınıf">1. Sınıf</option>
-                  <option value="2. Sınıf">2. Sınıf</option>
-                  <option value="3. Sınıf">3. Sınıf</option>
-                  <option value="4. Sınıf">4. Sınıf</option>
-                  <option value="5. Sınıf">5. Sınıf</option>
-                  <option value="6. Sınıf">6. Sınıf</option>
-                  <option value="6+ Sınıf">6+ Sınıf</option>
-                  <option value="Mezun">Mezun</option>
-                </Input>
-              </Col>
               <Col sm="6">
                 <label class="form-label" for="isMale">Cinsiyet</label>
                 <Input 

@@ -19,11 +19,7 @@
 
   $: {
     // Calculate current members from UserData
-    currentMembers = UserData.filter((user) =>
-      user.memberships?.some(
-        (membership) => membership.group._id === group._id && membership.status === "active"
-      )
-    ).length;
+    currentMembers = group.memberships.length;
 
     // Filter sessions for this group
     const groupSessions = SessionData.filter(

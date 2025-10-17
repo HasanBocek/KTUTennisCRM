@@ -29,8 +29,6 @@ export type MeType = {
   roles: string[];
   studentNumber?: number;
   isStudent: boolean;
-  department?: string;
-  grade?: string;
   createdAt: Date;
   lastLoginAt: Date;
   skillLevel: number;
@@ -53,6 +51,7 @@ export type GroupListType = Pick<
   | "membershipOpen"
   | "payment"
   | "notes"
+  | "memberships"
 >;
 
 export type MySessionType = {
@@ -78,8 +77,6 @@ export type UserType = {
   roles: string[];
   studentNumber?: number;
   isStudent: boolean;
-  department?: string;
-  grade?: string;
   createdAt: Date;
   lastLoginAt: Date;
   skillLevel: number;
@@ -97,12 +94,18 @@ export type GroupType = {
   _id: string;
   name: string;
   description: string;
-  coaches: CoachType[];
+  coaches: CoachType[] | string[];
   schedule: ScheduleType[];
   maxMembers: number;
   membershipOpen: boolean;
   payment: PaymentType;
   notes?: string;
+  memberships: {
+    _id: string;
+    user: UserType;
+    joinDate: Date;
+    status: string;
+  }[];
 };
 
 export type SessionType = {
@@ -198,8 +201,6 @@ export interface RegisterCredentials {
   firstName: string;
   lastName: string;
   studentNumber: string;
-  department: string;
-  grade: string;
   isMale: string;
   phoneNumber: string;
   skillLevel: string;

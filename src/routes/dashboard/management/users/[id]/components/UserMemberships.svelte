@@ -4,173 +4,127 @@
     Card,
     CardBody,
     CardHeader,
-    CardFooter,
     Col,
     Row,
     Nav,
     NavItem,
     NavLink,
-    Button,
-    Input,
-    FormGroup,
-    Label,
   } from "@sveltestrap/sveltestrap";
-  import type { UserType } from "$lib/types/types";
-  import { SessionData } from "$lib/assets/data/mock/data";
-  import type { SessionType } from "$lib/types/types";
+  import type { UserType, SessionType } from "$lib/types/types";
+  import { format } from "date-fns";
+  import { tr } from "date-fns/locale";
+  import StatusBadge from "$lib/components/StatusBadge.svelte";
+  import AttendanceEditModal from "./modals/AttendanceEditModal.svelte";
+  import { AttendanceService } from "$lib/services/attendance/attendanceService";
 
   export let user: UserType;
+  export let sessionsData: SessionType[];
 
-  // Local mutable copy of sessions for updates
-  let sessions = [...SessionData];
-  import {
-    format,
-    formatDistance,
-    formatRelative,
-    subDays,
-  } from "date-fns";
-  import { tr } from "date-fns/locale";
-  import AttendanceEditModal from "./modals/AttendanceEditModal.svelte";
-
-  // Sadece active status'undaki üyelikleri göster
-  $: memberships = (user.memberships || []).filter(
-    (membership) => membership.status === "active"
-  );
-  const currentUserId = user._id;
+  // State
+  let sessions = [...sessionsData];
   let activeGroupId: string | undefined = undefined;
-  $: if (!activeGroupId && memberships?.length) {
-    activeGroupId = memberships[0].group._id;
-  }
-
-  const getDayName = (day: string) => {
-    switch (day) {
-      case "Monday":
-        return "Pazartesi";
-      case "Tuesday":
-        return "Salı";
-      case "Wednesday":
-        return "Çarşamba";
-      case "Thursday":
-        return "Perşembe";
-      case "Friday":
-        return "Cuma";
-      case "Saturday":
-        return "Cumartesi";
-      case "Sunday":
-        return "Pazar";
-      default:
-        return day;
-    }
-  };
-
-  import StatusBadge from "$lib/components/StatusBadge.svelte";
-  import EmptyState from "$lib/components/EmptyState.svelte";
-
-  const formatDate = (date?: string | Date) =>
-    date ? new Date(date).toLocaleDateString() : "Veri Yok";
-  const formatDateTime = (date?: string | Date) =>
-    date ? new Date(date).toLocaleString() : "-";
-  const formatShortDate = (date?: string | Date) =>
-    date
-      ? new Date(date).toLocaleDateString("tr-TR", {
-          day: "2-digit",
-          month: "2-digit",
-        })
-      : "-";
-  const formatTime = (date?: string | Date) =>
-    date
-      ? new Date(date).toLocaleTimeString("tr-TR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      : "-";
-  const listCoaches = (coaches: SessionType["coaches"]) =>
-    coaches.map((c) => c.firstName + " " + c.lastName).join(", ") ||
-    "-";
-
-  $: sessionsByGroup = (groupId: string): SessionType[] =>
-    sessions.filter((s) => s.group._id === groupId);
-
-  const myAttendanceStatus = (session: SessionType) =>
-    session.attendance.find((a) => a.user._id === currentUserId)
-      ?.status;
-
-  const myAttendanceNote = (session: SessionType) =>
-    session.attendance.find((a) => a.user._id === currentUserId)
-      ?.note;
-
-  // Dersleri (session) kronolojik sıraya diz, 12 slot hazırla
-  const compareByStartTime = (a: SessionType, b: SessionType) =>
-    new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-  $: getSortedSessionsByGroup = (groupId: string): SessionType[] =>
-    sessions
-      .filter((s) => s.group._id === groupId)
-      .slice()
-      .sort(compareByStartTime);
-
-  // Yalnızca "Ders Detayları" listesi için: en yeni tarih başta olacak şekilde sırala
-  const compareByStartTimeDesc = (a: SessionType, b: SessionType) =>
-    new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
-  $: getSortedSessionsByGroupDesc = (
-    groupId: string
-  ): SessionType[] =>
-    sessions
-      .filter((s) => s.group._id === groupId)
-      .slice()
-      .sort(compareByStartTimeDesc);
-  const twelveSlots = Array.from({ length: 12 }, (_, i) => i);
-  let activeSessions: SessionType[] = [];
-  $: activeSessions = activeGroupId
-    ? getSortedSessionsByGroup(activeGroupId)
-    : [];
-
-  // Katılım durumu güncelleme için state yönetimi
-  let editingAttendance: Record<string, boolean> = {};
-  let tempAttendanceStatus: Record<string, string> = {};
-
-  // Modal state
   let attendanceModalOpen = false;
   let selectedSession: SessionType | null = null;
+  let updatingAttendance: { [sessionId: string]: boolean } = {};
 
-  // Katılım durumu seçenekleri
-  const attendanceOptions = [
+  // Computed
+  $: memberships = (user.memberships || []).filter(m => m.status === "active");
+  $: if (!activeGroupId && memberships?.length) activeGroupId = memberships[0].group._id;
+  $: activeSessions = activeGroupId ? getSortedSessions(activeGroupId) : [];
+  $: sessionsByGroup = (groupId: string) => sessions.filter(s => s.group._id === groupId);
+
+  // Constants
+  const ATTENDANCE_OPTIONS = [
     { value: "present", label: "Geldi", color: "success" },
     { value: "absent", label: "Gelmedi", color: "danger" },
     { value: "late", label: "Geç Geldi", color: "warning" },
     { value: "excused", label: "Mazeretli", color: "info" },
   ];
 
-  // Katılım durumu güncelleme fonksiyonu
-  function updateAttendanceStatus(
-    sessionId: string,
-    newStatus: string
-  ) {
-    // Deep clone approach - completely new object structure
-    sessions = sessions.map((session) => {
-      if (session._id === sessionId) {
-        const attendanceIndex = session.attendance.findIndex(
-          (a) => a.user._id === currentUserId
-        );
+  const TWELVE_SLOTS = Array.from({ length: 12 }, (_, i) => i);
 
-        if (attendanceIndex !== -1) {
-          // Update existing attendance
-          return {
-            ...session,
-            attendance: session.attendance.map((att, index) =>
-              index === attendanceIndex
-                ? { ...att, status: newStatus }
-                : { ...att }
-            ),
-          };
-        } else {
-          // Add new attendance
+  // Helper functions
+  function getSortedSessions(groupId: string, desc = false) {
+    const filtered = sessions.filter(s => s.group._id === groupId);
+    return filtered.sort((a, b) => {
+      const timeA = new Date(a.startTime).getTime();
+      const timeB = new Date(b.startTime).getTime();
+      return desc ? timeB - timeA : timeA - timeB;
+    });
+  }
+
+  function getUserAttendance(session: SessionType) {
+    return session.attendance.find(a => a.user._id === user._id);
+  }
+
+  function getAttendanceStatus(session: SessionType) {
+    return getUserAttendance(session)?.status;
+  }
+
+  function getAttendanceNote(session: SessionType) {
+    return getUserAttendance(session)?.note;
+  }
+
+  function getAttendanceMeta(status?: string) {
+    switch (status) {
+      case "present": return { label: "Geldi", color: "success" };
+      case "absent": return { label: "Gelm.", color: "danger" };
+      case "late": return { label: "Geç", color: "warning" };
+      case "excused": return { label: "Maz.", color: "info" };
+      default: return { label: "-", color: "light" };
+    }
+  }
+
+  function formatShortDate(date?: string | Date) {
+    return date ? new Date(date).toLocaleDateString("tr-TR", {
+      day: "2-digit", month: "2-digit"
+    }) : "-";
+  }
+
+  function formatTime(date?: string | Date) {
+    return date ? new Date(date).toLocaleTimeString("tr-TR", {
+      hour: "2-digit", minute: "2-digit"
+    }) : "-";
+  }
+
+  function listCoaches(coaches: SessionType["coaches"]) {
+    return coaches.map(c => `${c.firstName} ${c.lastName}`).join(", ") || "-";
+  }
+
+  // API functions
+  async function updateAttendance(sessionId: string, status: string, note?: string) {
+    updatingAttendance = { ...updatingAttendance, [sessionId]: true };
+
+    try {
+      const result = await AttendanceService.updateAttendance({
+        sessionId,
+        userId: user._id,
+        status,
+        note,
+      });
+
+      if (result.success) {
+        sessions = sessions.map(session => {
+          if (session._id !== sessionId) return session;
+
+          const attendanceIndex = session.attendance.findIndex(a => a.user._id === user._id);
+          
+          if (attendanceIndex !== -1) {
+            return {
+              ...session,
+              attendance: session.attendance.map((att, index) =>
+                index === attendanceIndex ? { ...att, status, note } : att
+              ),
+            };
+          }
+
           return {
             ...session,
             attendance: [
               ...session.attendance,
               {
                 user: {
-                  _id: currentUserId,
+                  _id: user._id,
                   email: user.email || "",
                   firstName: user.firstName || "",
                   lastName: user.lastName || "",
@@ -178,155 +132,42 @@
                   phoneNumber: user.phoneNumber || "",
                   studentNumber: user.studentNumber || 0,
                 },
-                status: newStatus,
+                status,
+                note,
               },
             ],
           };
+        });
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("sessionDataUpdated"));
         }
       }
-      return { ...session };
-    });
-
-    // Edit modunu kapat
-    editingAttendance = { ...editingAttendance, [sessionId]: false };
-    tempAttendanceStatus = Object.fromEntries(
-      Object.entries(tempAttendanceStatus).filter(
-        ([key]) => key !== sessionId
-      )
-    );
-
-    // Dispatch custom event to notify ProfileInfo
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("sessionDataUpdated"));
-    }
-
-    // Force re-render
-    activeSessions = activeGroupId
-      ? getSortedSessionsByGroup(activeGroupId)
-      : [];
-
-    if (import.meta.env.DEV) {
-      console.log(
-        `✅ AFTER UPDATE: Sessions updated, new length: ${sessions.length}`
-      );
-      console.log("Active sessions updated:", activeSessions.length);
-      console.log("Edit mode closed for session:", sessionId);
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+    } finally {
+      updatingAttendance = { ...updatingAttendance, [sessionId]: false };
     }
   }
 
-  // Edit modunu iptal et
-  function cancelEditingAttendance(sessionId: string) {
-    editingAttendance = { ...editingAttendance, [sessionId]: false };
-    tempAttendanceStatus = Object.fromEntries(
-      Object.entries(tempAttendanceStatus).filter(
-        ([key]) => key !== sessionId
-      )
-    );
-  }
-
-  // Modal fonksiyonları
-  function openAttendanceModal(session: SessionType) {
+  // Modal handlers
+  function openModal(session: SessionType) {
     selectedSession = session;
     attendanceModalOpen = true;
   }
 
-  function closeAttendanceModal() {
+  function closeModal() {
     attendanceModalOpen = false;
     selectedSession = null;
   }
 
-  // Modal'dan katılım durumu güncelleme
-  function handleAttendanceUpdate(
-    event: CustomEvent<{
-      sessionId: string;
-      status: string;
-      note?: string;
-    }>
-  ) {
+  async function handleModalUpdate(event: CustomEvent<{
+    sessionId: string;
+    status: string;
+    note?: string;
+  }>) {
     const { sessionId, status, note } = event.detail;
-    if (import.meta.env.DEV) {
-      console.log(
-        `🔄 MODAL UPDATE: Updating attendance for session ${sessionId} to ${status} with note: "${note}"`
-      );
-    }
-
-    // Deep clone approach - completely new object structure
-    sessions = sessions.map((session) => {
-      if (session._id === sessionId) {
-        const attendanceIndex = session.attendance.findIndex(
-          (a) => a.user._id === currentUserId
-        );
-
-        if (attendanceIndex !== -1) {
-          // Update existing attendance
-          return {
-            ...session,
-            attendance: session.attendance.map((att, index) =>
-              index === attendanceIndex
-                ? { ...att, status: status, note: note || undefined }
-                : { ...att }
-            ),
-          };
-        } else {
-          // Add new attendance
-          return {
-            ...session,
-            attendance: [
-              ...session.attendance,
-              {
-                user: {
-                  _id: currentUserId,
-                  email: user.email || "",
-                  firstName: user.firstName || "",
-                  lastName: user.lastName || "",
-                  isMale: user.isMale || "",
-                  phoneNumber: user.phoneNumber || "",
-                  studentNumber: user.studentNumber || 0,
-                },
-                status: status,
-                note: note || undefined,
-              },
-            ],
-          };
-        }
-      }
-      return { ...session };
-    });
-
-    // Also update the global SessionData so ProfileInfo gets updated
-    SessionData.splice(0, SessionData.length, ...sessions);
-
-    // Dispatch custom event to notify ProfileInfo
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("sessionDataUpdated"));
-    }
-
-    // Force re-render
-    activeSessions = activeGroupId
-      ? getSortedSessionsByGroup(activeGroupId)
-      : [];
-
-    if (import.meta.env.DEV) {
-      console.log(`✅ MODAL UPDATE COMPLETE: Sessions updated`);
-    }
-  }
-
-  function getAttendanceMeta(status?: string): {
-    label: string;
-    color: string;
-  } {
-    switch (status) {
-      case "present":
-        return { label: "Geldi", color: "success" };
-      case "absent":
-        return { label: "Gelm.", color: "danger" };
-      case "late":
-        return { label: "Geç", color: "warning" };
-      case "excused":
-        return { label: "Maz.", color: "info" };
-      default:
-        return { label: "-", color: "light" };
-    }
+    await updateAttendance(sessionId, status, note);
   }
 </script>
 
@@ -334,115 +175,86 @@
   <Col lg="12">
     <Card class="shadow-sm border-0">
       <CardHeader class="bg-transparent border-0 pb-0">
-        <div
-          class="d-flex align-items-center justify-content-between flex-wrap gap-2"
-        >
-          <h5
-            class="mb-0
-        "
-          >
-            Grup Dersleri
-          </h5>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+          <h5 class="mb-0">Grup Dersleri</h5>
         </div>
         <Nav tabs class="mt-3">
           {#each memberships as membership}
             <NavItem>
               <NavLink
                 active={activeGroupId === membership.group._id}
-                on:click={() =>
-                  (activeGroupId = membership.group._id)}
+                on:click={() => (activeGroupId = membership.group._id)}
                 role="button"
               >
                 {membership.group.name}
-                <Badge color="light" class="ms-2 text-muted border"
-                  >{sessionsByGroup(membership.group._id)
-                    .length}</Badge
-                >
+                <Badge color="light" class="ms-2 text-muted border">
+                  {sessionsByGroup(membership.group._id).length}
+                </Badge>
               </NavLink>
             </NavItem>
           {/each}
         </Nav>
       </CardHeader>
       <CardBody>
-        {#if activeGroupId}
-          {#if sessionsByGroup(activeGroupId).length > 0}
-            <!-- Mobile: horizontal chips -->
-            <div class="d-md-none">
-              <div class="sessions-scroll">
-                {#each twelveSlots as idx}
-                  <div class="session-chip">
-                    <div class="chip-date text-dark">
-                      {activeSessions[idx]
-                        ? formatShortDate(
-                            activeSessions[idx].startTime
-                          )
-                        : "-"}
-                    </div>
-                    <div class="chip-badge">
+        {#if activeGroupId && sessionsByGroup(activeGroupId).length > 0}
+          <!-- Mobile: horizontal chips -->
+          <div class="d-md-none">
+            <div class="sessions-scroll">
+              {#each TWELVE_SLOTS as idx}
+                <div class="session-chip">
+                  <div class="chip-date text-dark">
+                    {activeSessions[idx] ? formatShortDate(activeSessions[idx].startTime) : "-"}
+                  </div>
+                  <div class="chip-badge">
+                    {#if activeSessions[idx]}
+                      <Badge color={getAttendanceMeta(getAttendanceStatus(activeSessions[idx])).color}>
+                        {getAttendanceMeta(getAttendanceStatus(activeSessions[idx])).label}
+                      </Badge>
+                    {:else}
+                      -
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- Desktop: table -->
+          <div class="table-responsive d-none d-md-block">
+            <table class="table table-sm sessions-table">
+              <thead>
+                <tr>
+                  <th>Ders</th>
+                  {#each TWELVE_SLOTS as idx}
+                    <th class="text-dark">
+                      {activeSessions[idx] ? formatShortDate(activeSessions[idx].startTime) : "-"}
+                    </th>
+                  {/each}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-muted small">Katılım</td>
+                  {#each TWELVE_SLOTS as idx}
+                    <td>
                       {#if activeSessions[idx]}
-                        <Badge
-                          color={getAttendanceMeta(
-                            myAttendanceStatus(activeSessions[idx])
-                          ).color}
-                        >
-                          {getAttendanceMeta(
-                            myAttendanceStatus(activeSessions[idx])
-                          ).label}
-                        </Badge>
+                        <StatusBadge
+                          status={getAttendanceStatus(activeSessions[idx]) || "absent"}
+                          variant="badge"
+                        />
                       {:else}
                         -
                       {/if}
-                    </div>
-                  </div>
-                {/each}
-              </div>
-            </div>
-
-            <!-- Desktop/tablet: keep table -->
-            <div class="table-responsive d-none d-md-block">
-              <table class="table table-sm sessions-table">
-                <thead>
-                  <tr>
-                    <th>Ders</th>
-                    {#each twelveSlots as idx}
-                      <th class="text-dark"
-                        >{activeSessions[idx]
-                          ? formatShortDate(
-                              activeSessions[idx].startTime
-                            )
-                          : "-"}</th
-                      >
-                    {/each}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="text-muted small">Katılımım</td>
-                    {#each twelveSlots as idx}
-                      <td>
-                        {#if activeSessions[idx]}
-                          {#key activeSessions[idx]._id + JSON.stringify(activeSessions[idx].attendance)}
-                            <StatusBadge
-                              status={myAttendanceStatus(
-                                activeSessions[idx]
-                              ) || "absent"}
-                              variant="badge"
-                            />
-                          {/key}
-                        {:else}-{/if}
-                      </td>
-                    {/each}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          {:else}
-            <div class="text-muted small">
-              Bu üyelik için kayıtlı ders bulunmuyor.
-            </div>
-          {/if}
+                    </td>
+                  {/each}
+                </tr>
+              </tbody>
+            </table>
+          </div>
         {:else}
-          <div class="text-muted small">Üyelik bulunamadı.</div>
+          <div class="text-muted small">
+            {activeGroupId ? "Bu üyelik için kayıtlı ders bulunmuyor." : "Üyelik bulunamadı."}
+          </div>
         {/if}
       </CardBody>
     </Card>
@@ -456,195 +268,126 @@
         <h5 class="mb-0">Ders Detayları</h5>
       </CardHeader>
       <CardBody>
-        {#if activeGroupId}
-          {#if sessionsByGroup(activeGroupId).length > 0}
-            <ul class="list-unstyled mb-0">
-              {#each getSortedSessionsByGroupDesc(activeGroupId) as session, index (session._id + JSON.stringify(session.attendance))}
-                <li
-                  class="session-item"
-                  class:first-item={index === 0}
-                >
-                  <div
-                    class="d-flex w-100 align-items-start justify-content-between flex-column flex-md-row"
-                  >
-                    <div class="session-left">
-                      <div class="session-date">
-                        {format(
-                          new Date(session.startTime),
-                          "dd MMMM yyyy",
-                          { locale: tr }
-                        )}
-                        <span class="day-name"
-                          >{format(
-                            new Date(session.startTime),
-                            "EEEE",
-                            { locale: tr }
-                          )}</span
-                        >
-                      </div>
-
-                      <div class="session-info">
-                        <div class="info-row">
-                          <span class="label">Session ID:</span>
-                          <code class="session-id">
-                            <a
-                              href={`/dashboard/management/sessions/${session._id}`}
-                              >{session._id}</a
-                            >
-                          </code>
-                        </div>
-
-                        <div class="info-row">
-                          <span class="label">Saat:</span>
-                          <span class="value"
-                            >{formatTime(session.startTime)} - {formatTime(
-                              session.endTime
-                            )}</span
-                          >
-                        </div>
-
-                        <div class="info-row">
-                          <span class="label">Eğitmenler:</span>
-                          <span class="value"
-                            >{listCoaches(session.coaches)}</span
-                          >
-                        </div>
-
-                        {#if session.notes}
-                          <div class="info-row">
-                            <span class="label">Not:</span>
-                            <span class="value note"
-                              >{session.notes}</span
-                            >
-                          </div>
-                        {/if}
-
-                        {#if myAttendanceNote(session)}
-                          <div class="info-row">
-                            <span class="label">Öğrenci Notu:</span>
-                            <span class="value attendance-note">
-                              {myAttendanceNote(session)}
-                            </span>
-                          </div>
-                        {/if}
-                      </div>
+        {#if activeGroupId && sessionsByGroup(activeGroupId).length > 0}
+          <ul class="list-unstyled mb-0">
+            {#each getSortedSessions(activeGroupId, true) as session, index}
+              <li class="session-item" class:first-item={index === 0}>
+                <div class="d-flex w-100 align-items-start justify-content-between flex-column flex-md-row">
+                  <div class="session-left">
+                    <div class="session-date">
+                      {format(new Date(session.startTime), "dd MMMM yyyy", { locale: tr })}
+                      <span class="day-name">
+                        {format(new Date(session.startTime), "EEEE", { locale: tr })}
+                      </span>
                     </div>
-                    <div class="session-right">
-                      <div class="session-status">
+
+                    <div class="session-info">
+                      <div class="info-row">
+                        <span class="label">Session ID:</span>
+                        <code class="session-id">
+                          <a href={`/dashboard/management/sessions/${session._id}`}>
+                            {session._id}
+                          </a>
+                        </code>
+                      </div>
+
+                      <div class="info-row">
+                        <span class="label">Saat:</span>
+                        <span class="value">
+                          {formatTime(session.startTime)} - {formatTime(session.endTime)}
+                        </span>
+                      </div>
+
+                      <div class="info-row">
+                        <span class="label">Eğitmenler:</span>
+                        <span class="value">{listCoaches(session.coaches)}</span>
+                      </div>
+
+                      {#if session.notes}
+                        <div class="info-row">
+                          <span class="label">Not:</span>
+                          <span class="value note">{session.notes}</span>
+                        </div>
+                      {/if}
+
+                      {#if getAttendanceNote(session)}
+                        <div class="info-row">
+                          <span class="label">Öğrenci Notu:</span>
+                          <span class="value attendance-note">
+                            {getAttendanceNote(session)}
+                          </span>
+                        </div>
+                      {/if}
+                    </div>
+                  </div>
+
+                  <div class="session-right">
+                    <div class="session-status">
+                      <StatusBadge status={session.status || "active"} variant="text" />
+                    </div>
+                    <div class="session-attendance">
+                      <div class="attendance-text">
                         <StatusBadge
-                          status={session.status || "active"}
+                          status={getAttendanceStatus(session) || "absent"}
                           variant="text"
                         />
-                      </div>
-                      <div class="session-attendance">
-                        {#if editingAttendance[session._id]}
-                          <div class="edit-mode">
-                            <select
-                              bind:value={
-                                tempAttendanceStatus[session._id]
-                              }
-                              class="form-select form-select-sm"
-                            >
-                              {#each attendanceOptions as option}
-                                <option value={option.value}
-                                  >{option.label}</option
-                                >
-                              {/each}
-                            </select>
-                            <div class="edit-buttons">
-                              <button
-                                type="button"
-                                class="btn btn-sm btn-success"
-                                on:click={() =>
-                                  updateAttendanceStatus(
-                                    session._id,
-                                    tempAttendanceStatus[session._id]
-                                  )}
-                              >
-                                ✓
-                              </button>
-                              <button
-                                type="button"
-                                class="btn btn-sm btn-secondary"
-                                on:click={() =>
-                                  cancelEditingAttendance(
-                                    session._id
-                                  )}
-                              >
-                                ✕
-                              </button>
-                            </div>
-                          </div>
-                        {:else}
-                          <div class="attendance-text">
-                            <StatusBadge
-                              status={myAttendanceStatus(session) ||
-                                "absent"}
-                              variant="text"
-                            />
-                            <button
-                              type="button"
-                              class="btn btn-link btn-sm p-0 ms-2"
-                              on:click={() =>
-                                openAttendanceModal(session)}
-                              title="Katılım durumunu düzenle"
-                            >
-                              <i class="fas fa-edit"></i>
-                            </button>
-                          </div>
-                        {/if}
+                        <button
+                          type="button"
+                          class="btn btn-link btn-sm p-0 ms-2"
+                          disabled={updatingAttendance[session._id]}
+                          on:click={() => openModal(session)}
+                          title="Katılım durumunu düzenle"
+                        >
+                          {#if updatingAttendance[session._id]}
+                            <span class="spinner-border spinner-border-sm"></span>
+                          {:else}
+                            <i class="fas fa-edit"></i>
+                          {/if}
+                        </button>
                       </div>
                     </div>
                   </div>
-                </li>
-              {/each}
-            </ul>
-          {:else}
-            <div class="text-muted">Ders bulunmuyor.</div>
-          {/if}
+                </div>
+              </li>
+            {/each}
+          </ul>
         {:else}
-          <div class="text-muted">Üyelik bulunamadı.</div>
+          <div class="text-muted">
+            {activeGroupId ? "Ders bulunmuyor." : "Üyelik bulunamadı."}
+          </div>
         {/if}
       </CardBody>
     </Card>
   </Col>
 </Row>
 
-<!-- Katılım Düzenleme Modal'ı -->
 <AttendanceEditModal
   bind:isOpen={attendanceModalOpen}
   session={selectedSession}
-  currentStatus={selectedSession
-    ? myAttendanceStatus(selectedSession) || "present"
-    : "present"}
-  currentNote={selectedSession
-    ? myAttendanceNote(selectedSession) || ""
-    : ""}
-  on:save={handleAttendanceUpdate}
-  on:close={closeAttendanceModal}
+  currentStatus={selectedSession ? getAttendanceStatus(selectedSession) || "present" : "present"}
+  currentNote={selectedSession ? getAttendanceNote(selectedSession) || "" : ""}
+  on:save={handleModalUpdate}
+  on:close={closeModal}
 />
 
 <style>
-  .fw-500 {
-    font-weight: 500;
-  }
-
-  /* Tablo: thead ile ilk tbody satırı arasına yatay kesik çizgi */
-  .sessions-table thead {
-    border-bottom: 0; /* Bootstrap alt çizgisini kaldır */
-  }
-  .sessions-table tbody tr:first-child td {
-    border-top: 1px dashed rgba(0, 0, 0, 0.15);
-  }
-  html[data-bs-theme="dark"] .sessions-table tbody tr:first-child td {
-    border-top: 1px dashed rgba(255, 255, 255, 0.15);
-  }
-
-  /* Tablo tam genişlikte yayılsın, 12 sütun sağa kadar uzasın */
   .sessions-table {
     width: 100% !important;
     table-layout: fixed;
   }
+  
+  .sessions-table thead {
+    border-bottom: 0;
+  }
+  
+  .sessions-table tbody tr:first-child td {
+    border-top: 1px dashed rgba(0, 0, 0, 0.15);
+  }
+  
+  html[data-bs-theme="dark"] .sessions-table tbody tr:first-child td {
+    border-top: 1px dashed rgba(255, 255, 255, 0.15);
+  }
+
   .sessions-table th,
   .sessions-table td {
     white-space: nowrap;
@@ -652,13 +395,12 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  /* İlk kolon (etiket) sabit genişlikte kalsın */
+
   .sessions-table thead th:first-child,
   .sessions-table tbody td:first-child {
     width: 120px;
   }
 
-  /* Mobile chips */
   .sessions-scroll {
     display: flex;
     gap: 8px;
@@ -668,6 +410,7 @@
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory;
   }
+
   .session-chip {
     scroll-snap-align: start;
     flex: 0 0 auto;
@@ -678,6 +421,7 @@
     text-align: center;
     background: var(--bs-body-bg);
   }
+
   .session-item {
     border-bottom: 1px dashed rgba(0, 0, 0, 0.15);
     padding: 16px 0;
@@ -686,27 +430,28 @@
   .session-item.first-item {
     padding-top: 8px;
   }
-  html[data-bs-theme="dark"] .session-item {
-    border-bottom-color: rgba(255, 255, 255, 0.15);
-  }
+
   .session-item:last-child {
     border-bottom: none;
   }
-  html[data-bs-theme="dark"] .session-item:last-child {
-    border-bottom-color: transparent;
+
+  html[data-bs-theme="dark"] .session-item {
+    border-bottom-color: rgba(255, 255, 255, 0.15);
   }
+
   html[data-bs-theme="dark"] .session-chip {
     border-color: rgba(255, 255, 255, 0.15);
   }
+
   .chip-date {
     font-weight: 600;
     font-size: 0.85rem;
   }
+
   .chip-badge {
     margin-top: 4px;
   }
 
-  /* Session layout stilleri */
   .session-left {
     flex: 1;
     margin-right: 0;
@@ -818,33 +563,8 @@
     gap: 8px;
   }
 
-  .edit-mode {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  @media (min-width: 768px) {
-    .edit-mode {
-      flex-wrap: nowrap;
-      justify-content: flex-start;
-    }
-  }
-
-  .edit-buttons {
-    display: flex;
-    gap: 4px;
-  }
-
   .attendance-text {
     display: flex;
     align-items: center;
-  }
-
-  .attendance-value {
-    font-weight: 500;
-    font-size: 0.8rem;
   }
 </style>
